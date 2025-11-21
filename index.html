@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Impostor — Party Word Game</title>
+  <style>
+    :root {
+      --bg: #0f172a;       /* slate-900 */
+      --panel: #111827;    /* gray-900 */
+      --muted: #94a3b8;    /* slate-400 */
+      --text: #e5e7eb;     /* gray-200 */
+      --accent: #38bdf8;   /* sky-400 */
+      --accent2: #f97316;  /* orange-500 */
+      --ok: #22c55e;       /* green-500 */
+      --warn: #ef4444;     /* red-500 */
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, #0b1223 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+    header {
+      padding: 1.25rem 1rem; border-bottom: 1px solid #1f2937; background: rgba(17,24,39,0.6); backdrop-filter: blur(6px);
+      position: sticky; top: 0; z-index: 10;
+    }
+    header h1 { margin: 0; font-size: 1.25rem; letter-spacing: 0.4px; }
+    main { max-width: 900px; margin: 0 auto; padding: 1rem; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card {
+      background: var(--panel); border: 1px solid #1f2937; border-radius: 12px; padding: 1rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .card h2 { margin: 0 0 0.75rem; font-size: 1.05rem; color: #cbd5e1; }
+    label { display: block; font-size: 0.9rem; color: var(--muted); margin-bottom: 0.35rem; }
+    textarea, select, input[type=number], input[type=text] {
+      width: 100%; padding: 0.6rem 0.7rem; border-radius: 10px; border: 1px solid #334155; background: #0b1223; color: var(--text);
+      outline: none;
+    }
+    textarea { min-height: 140px; resize: vertical; }
+    .row { display: flex; gap: 0.75rem; align-items: center; }
+    .row > * { flex: 1; }
+    .hint { font-size: 0.85rem; color: var(--muted); margin-top: 0.35rem; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.65rem 0.9rem; border-radius: 10px; border: 1px solid #334155; color: var(--text);
+      background: #0b1223; cursor: pointer; transition: transform 0.02s ease-in, background 0.15s ease;
+      user-select: none;
+    }
+    .btn:hover { background: #0e162e; }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { border-color: #0ea5e9; background: #0b1326; color: #e0f2fe; }
+    .btn.success { border-color: #16a34a; }
+    .btn.warn { border-color: #ef4444; }
+    .stack { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.6rem; border-radius: 999px;
+      background: #0b1326; border: 1px solid #334155; color: #cbd5e1; font-size: 0.85rem;
+    }
+    .divider { height: 1px; background: #1f2937; margin: 0.85rem 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    /* Reveal overlay */
+    .overlay {
+      position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+      background: rgba(2,6,23,0.75); backdrop-filter: blur(4px); z-index: 50;
+    }
+    .reveal {
+      width: min(560px, 92vw); border-radius: 16px; padding: 1rem 1.25rem; background: #0b1326; border: 1px solid #334155;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+    }
+    .reveal h3 { margin: 0 0 0.5rem; font-size: 1.1rem; color: #e2e8f0; }
+    .role {
+      display: grid; gap: 0.6rem; margin-top: 0.5rem;
+      grid-template-columns: 1fr; align-items: start;
+    }
+    .role .box {
+      background: #091025; border: 1px dashed #334155; border-radius: 12px; padding: 0.9rem;
+    }
+    .role .box .label { font-size: 0.85rem; color: var(--muted); }
+    .role .box .value { font-size: 1.1rem; }
+    .countdown { margin-top: 0.5rem; color: var(--muted); text-align: right; }
+    .closebar { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
+    .footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 1rem 0 2rem; }
+    /* Status badges */
+    .status { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .status .badge {
+      background: #0b1326; border: 1px solid #334155; color: #cbd5e1; font-size: 0.85rem; padding: 0.35rem 0.6rem; border-radius: 999px;
+    }
+    .badge.ok { border-color: var(--ok); color: #bbf7d0; }
+    .badge.warn { border-color: var(--warn); color: #fecaca; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Impostor — party word game</h1>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="card">
+      <h2>Setup</h2>
+      <label for="names">Player names (one per line)</label>
+      <textarea id="names" placeholder="e.g.
+Muhammad
+Aisha
+Liam
+Noah
+Olivia"></textarea>
+
+      <div class="row">
+        <div>
+          <label for="impostors">Number of impostors</label>
+          <input id="impostors" type="number" min="1" value="1" />
+          <div class="hint">Must be at least 1 and less than total players.</div>
+        </div>
+        <div>
+          <label for="category">Category</label>
+          <select id="category">
+            <option value="any" selected>Any</option>
+            <option value="food">Food</option>
+            <option value="sports">Sports</option>
+            <option value="geography">Geography</option>
+            <option value="technology">Technology</option>
+            <option value="movies">Movies</option>
+            <option value="music">Music</option>
+            <option value="animals">Animals</option>
+            <option value="household">Household</option>
+          </select>
+          <div class="hint">Pick a category or leave on Any.</div>
+        </div>
+      </div>
+
+      <div class="stack" style="margin-top:0.75rem">
+        <button id="startBtn" class="btn primary">Start new round</button>
+        <button id="resetBtn" class="btn warn">Clear players</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="status" id="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>Reveal role</h2>
+      <label for="revealPlayer">Select player</label>
+      <select id="revealPlayer"></select>
+      <div class="hint">Pass the device around. Each player privately reveals their info.</div>
+
+      <div class="stack" style="margin-top:0.75rem">
+        <button id="revealBtn" class="btn success">Reveal</button>
+        <button id="hideBtn" class="btn">Hide</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>Round info</h2>
+      <div class="stack">
+        <span class="tag"><span class="mono">Starter:</span> <span id="starterTag">—</span></span>
+        <span class="tag"><span class="mono">Category:</span> <span id="catTag">—</span></span>
+        <span class="tag"><span class="mono">Players:</span> <span id="playersTag">—</span></span>
+        <span class="tag"><span class="mono">Impostors:</span> <span id="impsTag">—</span></span>
+      </div>
+    </section>
+  </div>
+
+  <div class="divider"></div>
+
+  <section class="card">
+    <h2>How to play</h2>
+    <ul>
+      <li><strong>Goal:</strong> Most players know the exact word. Impostors only know the general topic and must blend in.</li>
+      <li><strong>Turns:</strong> The starter says a clue (a word or short phrase) related to the secret word. Go clockwise.</li>
+      <li><strong>Discussion:</strong> After one round of clues, discuss and vote who you think the impostor(s) are.</li>
+      <li><strong>Scoring:</strong> Optional: +1 point if non-impostors eliminate all impostors. Impostors score if they survive or guess the word.</li>
+    </ul>
+  </section>
+
+  <p class="footer">Made for pass-the-device play. For online play, host multiple instances and reveal individually per device.</p>
+</main>
+
+<!-- Overlay for private reveal -->
+<div class="overlay" id="overlay">
+  <div class="reveal">
+    <h3 id="revealTitle">Role</h3>
+    <div class="role">
+      <div class="box">
+        <div class="label">Your role</div>
+        <div class="value" id="roleValue">—</div>
+      </div>
+      <div class="box">
+        <div class="label" id="infoLabel">Your info</div>
+        <div class="value" id="infoValue">—</div>
+      </div>
+    </div>
+    <div class="countdown" id="countdown">Auto-hide in 8s</div>
+    <div class="closebar">
+      <button class="btn warn" id="closeBtn">Hide now</button>
+      <span class="hint">Shield the screen while revealing.</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* --- Word list: add your own entries here --- */
+const WORDS = [
+  // Food
+  { word: "Pizza", topic: "Food", category: "food" },
+  { word: "Sushi", topic: "Food", category: "food" },
+  { word: "Chocolate", topic: "Food", category: "food" },
+  { word: "Lasagne", topic: "Food", category: "food" },
+
+  // Sports
+  { word: "Cricket", topic: "Sports", category: "sports" },
+  { word: "Tennis", topic: "Sports", category: "sports" },
+  { word: "Boxing", topic: "Sports", category: "sports" },
+  { word: "Football", topic: "Sports", category: "sports" },
+
+  // Geography
+  { word: "Pyramid", topic: "Geography", category: "geography" },
+  { word: "Volcano", topic: "Geography", category: "geography" },
+  { word: "Desert", topic: "Geography", category: "geography" },
+  { word: "Glacier", topic: "Geography", category: "geography" },
+
+  // Technology
+  { word: "Algorithm", topic: "Technology", category: "technology" },
+  { word: "Database", topic: "Technology", category: "technology" },
+  { word: "Router", topic: "Technology", category: "technology" },
+  { word: "Keyboard", topic: "Technology", category: "technology" },
+
+  // Movies
+  { word: "Superhero", topic: "Movies", category: "movies" },
+  { word: "Oscar", topic: "Movies", category: "movies" },
+  { word: "Sequel", topic: "Movies", category: "movies" },
+  { word: "Director", topic: "Movies", category: "movies" },
+
+  // Music
+  { word: "Guitar", topic: "Music", category: "music" },
+  { word: "Melody", topic: "Music", category: "music" },
+  { word: "Choir", topic: "Music", category: "music" },
+  { word: "Festival", topic: "Music", category: "music" },
+
+  // Animals
+  { word: "Penguin", topic: "Animals", category: "animals" },
+  { word: "Kangaroo", topic: "Animals", category: "animals" },
+  { word: "Tiger", topic: "Animals", category: "animals" },
+  { word: "Dolphin", topic: "Animals", category: "animals" },
+
+  // Household
+  { word: "Vacuum", topic: "Household", category: "household" },
+  { word: "Microwave", topic: "Household", category: "household" },
+  { word: "Sofa", topic: "Household", category: "household" },
+  { word: "Curtains", topic: "Household", category: "household" },
+];
+
+/* --- State --- */
+let players = [];
+let impostorIndices = new Set();
+let selectedWord = null;
+let starterIndex = null;
+
+/* --- Utils --- */
+const byId = (id) => document.getElementById(id);
+const randInt = (n) => Math.floor(Math.random() * n);
+const shuffle = (arr) => {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = randInt(i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+const sample = (arr) => arr[randInt(arr.length)];
+const clamp = (x, min, max) => Math.max(min, Math.min(max, x));
+
+/* --- Elements --- */
+const namesEl = byId('names');
+const impsEl = byId('impostors');
+const catEl = byId('category');
+const startBtn = byId('startBtn');
+const resetBtn = byId('resetBtn');
+
+const revealPlayerEl = byId('revealPlayer');
+const revealBtn = byId('revealBtn');
+const hideBtn = byId('hideBtn');
+
+const statusEl = byId('status');
+const starterTag = byId('starterTag');
+const catTag = byId('catTag');
+const playersTag = byId('playersTag');
+const impsTag = byId('impsTag');
+
+const overlay = byId('overlay');
+const revealTitle = byId('revealTitle');
+const roleValue = byId('roleValue');
+const infoLabel = byId('infoLabel');
+const infoValue = byId('infoValue');
+const countdownEl = byId('countdown');
+const closeBtn = byId('closeBtn');
+
+let countdownTimer = null;
+let secs = 8;
+
+/* --- Logic --- */
+function parsePlayers() {
+  const lines = namesEl.value.split('\n').map(s => s.trim()).filter(Boolean);
+  players = lines;
+  return players;
+}
+
+function validateSetup() {
+  const n = players.length;
+  const k = parseInt(impsEl.value, 10);
+  const msg = [];
+
+  if (n < 3) msg.push('Add at least 3 players.');
+  if (!Number.isFinite(k) || k < 1) msg.push('Number of impostors must be at least 1.');
+  if (k >= n) msg.push('Impostors must be fewer than players.');
+
+  return { ok: msg.length === 0, errors: msg, n, k };
+}
+
+function pickWord(category) {
+  const pool = category === 'any'
+    ? WORDS
+    : WORDS.filter(w => w.category === category);
+  if (pool.length === 0) return null;
+  return sample(pool);
+}
+
+function assignImpostors(n, k) {
+  impostorIndices = new Set();
+  const indices = shuffle([...Array(n).keys()]);
+  for (let i = 0; i < k; i++) impostorIndices.add(indices[i]);
+}
+
+function startRound() {
+  parsePlayers();
+  const { ok, errors, n, k } = validateSetup();
+  statusEl.innerHTML = '';
+
+  if (!ok) {
+    for (const e of errors) {
+      const span = document.createElement('span');
+      span.className = 'badge warn';
+      span.textContent = e;
+      statusEl.appendChild(span);
+    }
+    return;
+  }
+
+  assignImpostors(n, clamp(k, 1, n - 1));
+  selectedWord = pickWord(catEl.value);
+  if (!selectedWord) {
+    statusEl.innerHTML = '<span class="badge warn">No words available for the selected category.</span>';
+    return;
+  }
+
+  starterIndex = randInt(n);
+
+  // Update tags
+  starterTag.textContent = players[starterIndex];
+  catTag.textContent = selectedWord.topic + (catEl.value !== 'any' ? ` (${catEl.value})` : '');
+  playersTag.textContent = n;
+  impsTag.textContent = impostorIndices.size;
+
+  // Fill reveal player selector
+  revealPlayerEl.innerHTML = '';
+  players.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = p;
+    revealPlayerEl.appendChild(opt);
+  });
+
+  // Status badges
+  const ok1 = document.createElement('span');
+  ok1.className = 'badge ok';
+  ok1.textContent = 'Round ready';
+  const ok2 = document.createElement('span');
+  ok2.className = 'badge';
+  ok2.textContent = `Word selected: hidden`;
+  const ok3 = document.createElement('span');
+  ok3.className = 'badge';
+  ok3.textContent = `Starter: ${players[starterIndex]}`;
+  statusEl.append(ok1, ok2, ok3);
+}
+
+function showReveal() {
+  const idx = parseInt(revealPlayerEl.value, 10);
+  if (!Number.isFinite(idx) || idx < 0 || idx >= players.length || !selectedWord) return;
+
+  const isImp = impostorIndices.has(idx);
+  revealTitle.textContent = `Private reveal — ${players[idx]}`;
+  roleValue.textContent = isImp ? 'Impostor' : 'Civilian';
+  infoLabel.textContent = isImp ? 'General topic' : 'Secret word';
+  infoValue.textContent = isImp ? selectedWord.topic : selectedWord.word;
+
+  overlay.style.display = 'flex';
+  secs = 8;
+  countdownEl.textContent = `Auto-hide in ${secs}s`;
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    secs--;
+    countdownEl.textContent = `Auto-hide in ${secs}s`;
+    if (secs <= 0) hideReveal();
+  }, 1000);
+}
+
+function hideReveal() {
+  overlay.style.display = 'none';
+  clearInterval(countdownTimer);
+}
+
+function clearPlayers() {
+  namesEl.value = '';
+  players = [];
+  impostorIndices.clear();
+  selectedWord = null;
+  starterIndex = null;
+
+  revealPlayerEl.innerHTML = '';
+  starterTag.textContent = '—';
+  catTag.textContent = '—';
+  playersTag.textContent = '—';
+  impsTag.textContent = '—';
+  statusEl.innerHTML = '<span class="badge">Cleared.</span>';
+}
+
+/* --- Events --- */
+startBtn.addEventListener('click', startRound);
+resetBtn.addEventListener('click', clearPlayers);
+revealBtn.addEventListener('click', showReveal);
+hideBtn.addEventListener('click', hideReveal);
+closeBtn.addEventListener('click', hideReveal);
+</script>
+</body>
+</html>
