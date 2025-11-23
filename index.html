@@ -9,7 +9,7 @@
   :root{
     --bg:#0a0b14; --panel:#111328; --text:#eaeaf3; --muted:#a6a7c2;
     --primary:#7c4dff; --primary-2:#9b6dff; --accent:#00d4ff; --danger:#ff3b5f; --safe:#28c76f;
-    --border:#2a2c4a; --glow:#6f54ff; --neon:#08f7fe;
+    --border:#2a2c4a; --neon:#08f7fe;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -21,7 +21,8 @@
       radial-gradient(800px 600px at 90% 120%, rgba(8,247,254,.12), transparent 60%),
       #0a0b14;
   }
-  /* Top system bar like your screenshots */
+
+  /* Status bar (visual) */
   .sysbar{
     display:flex; justify-content:space-between; align-items:center;
     padding:10px 14px; color:#cfd0e9; font-size:.9rem; border-bottom:1px solid var(--border);
@@ -31,7 +32,7 @@
   .battery{display:flex; align-items:center; gap:6px}
   .battery .cell{width:28px; height:14px; border:2px solid #cfd0e9; border-radius:3px; position:relative}
   .battery .cell::after{content:""; position:absolute; right:-6px; top:3px; width:4px; height:8px; background:#cfd0e9; border-radius:1px}
-  .battery .fill{height:100%; background:#2bdc85; width:22%} /* updated via JS */
+  .battery .fill{height:100%; background:#2bdc85; width:22%}
 
   .app{max-width:920px; margin:0 auto; padding:16px}
   .screen{display:none; animation:fade .22s ease}
@@ -39,8 +40,7 @@
   @keyframes fade{from{opacity:.01; transform:translateY(6px)} to{opacity:1; transform:none}}
 
   .card{
-    background:
-      linear-gradient(180deg, rgba(25,25,44,.95), rgba(17,18,38,.95));
+    background:linear-gradient(180deg, rgba(25,25,44,.95), rgba(17,18,38,.95));
     border:1px solid var(--border); border-radius:22px; padding:18px;
     box-shadow:0 20px 50px rgba(0,0,0,.45);
   }
@@ -71,6 +71,7 @@
   .btn.ghost{background:transparent; border:1px dashed var(--border)}
   .btn.danger{background:linear-gradient(135deg, #ff3b5f, #ff6b8a); border:none}
   .btn.safe{background:linear-gradient(135deg, #22c55e, #2bdc85); border:none}
+  .btn.disabled{opacity:.5; pointer-events:none}
 
   .tags{display:flex; gap:8px; flex-wrap:wrap}
   .tag{
@@ -79,7 +80,7 @@
   }
   .divider{height:1px; background:var(--border); margin:14px 0}
 
-  /* Players grid with neon circular avatars */
+  /* Players grid with neon avatars */
   .players{
     display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;
   }
@@ -90,6 +91,7 @@
     transition:transform .06s ease, box-shadow .2s ease, border-color .2s ease;
   }
   .player:hover{ transform:translateY(-2px); box-shadow:0 12px 30px rgba(124,77,255,.25); border-color:#3a3f68; }
+  .player.locked{ opacity:.55; cursor:not-allowed; border-color:#2a2c4a; }
   .avatar{
     width:68px; height:68px; border-radius:999px; margin:8px auto 10px;
     display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.6rem; letter-spacing:.3px;
@@ -97,32 +99,44 @@
     background:
       radial-gradient(60px 60px at 30% 30%, rgba(8,247,254,.45), transparent 60%),
       linear-gradient(135deg, #7c4dff, #00d4ff);
-    box-shadow:
-      0 0 0 3px rgba(8,247,254,.25),
-      0 10px 26px rgba(0,0,0,.45);
+    box-shadow:0 0 0 3px rgba(8,247,254,.25), 0 10px 26px rgba(0,0,0,.45);
   }
-  .pname{font-weight:700; text-transform:lowercase; color:#eaeaf7; letter-spacing:.2px}
+  .pname{font-weight:700; color:#eaeaf7; letter-spacing:.2px}
 
-  /* Full-screen reveal overlay */
+  /* Overlay */
   .overlay{position:fixed; inset:0; display:none; align-items:center; justify-content:center;
            background:radial-gradient(900px 520px at 50% -10%, rgba(124,77,255,.28), rgba(0,0,0,.8)); z-index:50}
   .overlay.show{display:flex}
   .reveal{
     width:min(560px,92vw);
-    background:
-      linear-gradient(180deg,#171842,#101233);
+    background:linear-gradient(180deg,#171842,#101233);
     border:1px solid var(--border); border-radius:22px; padding:20px;
     box-shadow:0 24px 60px rgba(0,0,0,.55);
   }
   .reveal h3{margin:0 0 6px}
   .rsub{color:var(--muted); margin:0 0 10px}
+
+  /* Tap box with flip animation */
   .box{
+    perspective:900px; margin-top:8px;
+  }
+  .flip{
+    position:relative; width:100%; height:140px;
+    transform-style:preserve-3d; transition:transform .6s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease;
+    border-radius:16px; overflow:hidden;
+    box-shadow:0 10px 26px rgba(0,0,0,.35);
+  }
+  .flip.glow{ box-shadow:0 0 24px rgba(124,77,255,.45), 0 10px 26px rgba(0,0,0,.45); }
+  .face{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    backface-visibility:hidden; border:1px dashed var(--border);
     background:linear-gradient(180deg,#121538,#0f1233);
-    border:1px dashed var(--border); border-radius:16px; padding:14px; text-align:center; margin-top:8px;
   }
-  .tap{
-    height:120px; display:flex; align-items:center; justify-content:center; font-size:1.05rem; color:#b8baf0;
-  }
+  .front{ }
+  .back{ transform:rotateY(180deg); }
+  .flip.revealed{ transform:rotateY(180deg) }
+
+  .tapText{font-size:1.05rem; color:#b8baf0}
   .word{
     font-size:1.35rem; font-weight:800; letter-spacing:.3px;
     background:linear-gradient(135deg, #c6c7ff, #eaeaf7); -webkit-background-clip:text; background-clip:text; color:transparent;
@@ -134,10 +148,41 @@
   }
   .actions{display:flex; justify-content:flex-end; gap:8px; margin-top:12px}
 
-  /* Mode cards */
-  .mode-wrap{display:grid; gap:10px; grid-template-columns:1fr 1fr}
-  .mode{padding:12px; border-radius:14px; border:1px solid var(--border); background:#121538}
-  .mode h3{margin:0 0 6px; font-size:1rem}
+  /* Dramatic impostor reveal overlay */
+  .imp-veil{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60;
+    background:radial-gradient(1000px 680px at 50% -20%, rgba(255,59,95,.25), rgba(0,0,0,.85));
+    animation:veilIn .4s ease;
+  }
+  @keyframes veilIn{from{opacity:0} to{opacity:1}}
+  .imp-card{
+    width:min(600px,92vw); text-align:center; padding:20px; border-radius:22px;
+    background:linear-gradient(180deg, #1a0f18, #240f17);
+    border:1px solid #5d1a28; box-shadow:0 30px 80px rgba(255,59,95,.35);
+  }
+  .imp-title{
+    font-size:1.6rem; font-weight:900; letter-spacing:.5px; color:white;
+    text-shadow:0 0 18px rgba(255,59,95,.6);
+    animation:pulseText 1.4s infinite;
+  }
+  @keyframes pulseText{
+    0%,100%{ text-shadow:0 0 10px rgba(255,59,95,.55) }
+    50%{ text-shadow:0 0 24px rgba(255,59,95,.85) }
+  }
+  .imp-names{ margin-top:12px; display:flex; flex-wrap:wrap; justify-content:center; gap:8px }
+  .imp-name{
+    border:1px solid #ff3b5f; color:#ffe6ea; padding:10px 14px; border-radius:14px; font-weight:800;
+    background:linear-gradient(135deg, #6b0f1a, #ff3b5f);
+    box-shadow:0 0 24px rgba(255,59,95,.45);
+    animation:breathe 1.8s infinite;
+  }
+  @keyframes breathe{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.06); }
+  }
+  .imp-actions{display:flex; justify-content:center; gap:10px; margin-top:14px}
+
+  /* Utility hidden */
+  .hidden{display:none}
 </style>
 </head>
 <body>
@@ -150,37 +195,25 @@
   </div>
 
   <div class="app">
-    <!-- Setup screen (like your "Start Game" config) -->
+    <!-- Setup -->
     <section id="screen-setup" class="screen active">
       <div class="grid cols-2">
         <div class="card">
           <h2>Game setup</h2>
-          <div class="mode-wrap">
-            <div class="mode">
-              <h3>Word game</h3>
-              <p class="sub">Find who doesn’t know the secret word.</p>
-              <label><input type="radio" name="mode" value="word" checked /> Select</label>
-            </div>
-            <div class="mode">
-              <h3>Question game</h3>
-              <p class="sub">Find who got a different question.</p>
-              <label><input type="radio" name="mode" value="question" /> Select</label>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
           <div class="row">
-            <div>
-              <label for="numPlayers">Number of players</label>
-              <input id="numPlayers" type="number" min="3" value="4" />
-            </div>
             <div>
               <label for="numImps">Number of impostors</label>
               <input id="numImps" type="number" min="1" value="1" />
             </div>
+            <div>
+              <label for="difficulty">Difficulty</label>
+              <select id="difficulty">
+                <option value="easy" selected>Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
           </div>
-
           <div class="row" style="margin-top:8px">
             <div>
               <label for="category">Category</label>
@@ -195,35 +228,21 @@
                 <option value="animals">Animals</option>
                 <option value="household">Household</option>
               </select>
+              <div class="sub">Impostor sees the topic if enabled.</div>
             </div>
-            <div>
-              <label for="difficulty">Difficulty</label>
-              <select id="difficulty">
-                <option value="easy" selected>Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:8px">
             <div>
               <label><input id="showCatImp" type="checkbox" checked /> Show category to impostor</label>
-              <div class="sub">Impostor sees the topic (like your screenshot).</div>
-            </div>
-            <div>
-              <label><input id="showHintImp" type="checkbox" /> Show hint to impostor</label>
-              <div class="sub">Optional subtle hint word.</div>
+              <label style="margin-top:6px"><input id="showHintImp" type="checkbox" /> Show hint to impostor</label>
             </div>
           </div>
 
           <div class="divider"></div>
 
           <label for="names">Players (one per line)</label>
-          <textarea id="names" placeholder="sahal
-dad
-mum
-momo"></textarea>
+          <textarea id="names">Mrs Belshaw
+Miss Savage
+Miss Benjelloun
+Miss Connel</textarea>
 
           <div class="actions">
             <button id="startBtn" class="btn primary">Start game</button>
@@ -241,12 +260,12 @@ momo"></textarea>
             <span class="tag"><span class="sub">Starter:</span> <span id="tagStarter">—</span></span>
           </div>
           <div class="divider"></div>
-          <p class="sub">After starting, tap your name to reveal your word, then pass the device to the next player.</p>
+          <p class="sub">Tap your name to reveal your word. After all are revealed, hit “Reveal Impostor(s)”.</p>
         </div>
       </div>
     </section>
 
-    <!-- Players screen (grid with neon avatars like your first screenshot) -->
+    <!-- Players -->
     <section id="screen-players" class="screen">
       <div class="card">
         <h2>Players</h2>
@@ -255,11 +274,12 @@ momo"></textarea>
         <div class="actions">
           <button id="toSetup" class="btn ghost">Back</button>
           <button id="toRound" class="btn safe">Go to round</button>
+          <button id="revealImpsBtn" class="btn danger hidden">Reveal Impostor(s)</button>
         </div>
       </div>
     </section>
 
-    <!-- Round screen (simple instructions, matching your flow) -->
+    <!-- Round -->
     <section id="screen-round" class="screen">
       <div class="card">
         <h2>Round in progress</h2>
@@ -271,7 +291,7 @@ momo"></textarea>
         </div>
         <div class="card" style="margin-top:10px">
           <h2>One sentence clue each</h2>
-          <p class="sub">Keep it specific enough to help, vague enough not to give it away. After one loop, discuss and vote.</p>
+          <p class="sub">Specific enough to help, vague enough not to give it away. After one loop, discuss and vote.</p>
           <div class="actions">
             <button id="newRound" class="btn ghost">New round</button>
           </div>
@@ -285,21 +305,37 @@ momo"></textarea>
     <div class="reveal" role="dialog" aria-modal="true">
       <h3 id="revealTitle">The word for —</h3>
       <p class="rsub" id="revealCat">Category: —</p>
-      <div id="tapBox" class="box">
-        <div id="tapText" class="tap">Tap the box to reveal</div>
-        <div id="wordBox" class="word" style="display:none">—</div>
-        <div id="impBox" style="display:none"><span class="imposter">Imposter</span></div>
-        <div id="hintBox" class="sub" style="display:none; margin-top:8px">Hint: <span id="hintText">—</span></div>
+      <div class="box">
+        <div id="flipBox" class="flip">
+          <div class="face front center">
+            <div class="tapText">Tap the box to reveal</div>
+          </div>
+          <div class="face back center">
+            <div id="wordOrRole" class="word">—</div>
+          </div>
+        </div>
+        <div id="hintLine" class="sub" style="display:none; margin-top:8px">Hint: <span id="hintText">—</span></div>
       </div>
       <div class="actions">
         <button id="gotIt" class="btn primary">Got it!</button>
-        <button id="closeReveal" class="btn danger">Close</button>
+        <button id="closeReveal" class="btn ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dramatic impostor reveal -->
+  <div id="impVeil" class="imp-veil" aria-hidden="true">
+    <div class="imp-card">
+      <div class="imp-title">Impostor(s) Revealed</div>
+      <div id="impNames" class="imp-names"></div>
+      <div class="imp-actions">
+        <button id="impClose" class="btn danger">Close</button>
       </div>
     </div>
   </div>
 
 <script>
-/* ==== Clock & battery (visual only, like your status bar) ==== */
+/* ==== Clock & battery visuals ==== */
 function updateClock(){
   const now = new Date();
   const opts = { hour: 'numeric', minute: '2-digit' };
@@ -447,43 +483,19 @@ const WORDS = [
   {word:"Tapestry",topic:"Household",category:"household",difficulty:"hard",hints:["Wall","Woven"]},
 ];
 
-/* ==== Question prompts for "Question game" mode ==== */
-const QUESTIONS = {
-  same: [
-    {prompt:"Describe your morning routine in one sentence.", difficulty:"easy"},
-    {prompt:"Name a city you'd like to visit and why.", difficulty:"medium"},
-    {prompt:"Explain a hobby you enjoy in one sentence.", difficulty:"easy"},
-    {prompt:"What was your last movie and what you liked?", difficulty:"medium"},
-    {prompt:"Share one thing you learned recently.", difficulty:"hard"},
-  ],
-  alt: [
-    {prompt:"Describe your bedtime routine in one sentence.", difficulty:"easy"},
-    {prompt:"Name a city you would avoid and why.", difficulty:"medium"},
-    {prompt:"Explain a skill you want to learn.", difficulty:"easy"},
-    {prompt:"What was a movie you disliked and why?", difficulty:"medium"},
-    {prompt:"Share a belief you changed your mind about.", difficulty:"hard"},
-  ]
-};
-
 /* ==== State ==== */
 let players = [];
 let impostorIndices = new Set();
+let revealedSet = new Set(); // players who have revealed (lockout)
 let selectedWord = null;
-let selectedQuestion = null;
-let altQuestion = null;
 let starterIndex = null;
-let roundMode = 'word'; // 'word' or 'question'
 
 /* ==== Helpers ==== */
 const $ = id => document.getElementById(id);
 const randInt = n => Math.floor(Math.random()*n);
 const sample = arr => arr[randInt(arr.length)];
 const shuffle = arr => { for(let i=arr.length-1;i>0;i--){const j=randInt(i+1); [arr[i],arr[j]]=[arr[j],arr[i]] } return arr };
-const clamp = (x,min,max) => Math.max(min,Math.min(max,x));
-
-function parsePlayers(text){
-  return text.split('\n').map(s=>s.trim()).filter(Boolean);
-}
+function parsePlayers(text){ return text.split('\n').map(s=>s.trim()).filter(Boolean); }
 function validate(n,k){
   const errs=[];
   if(n<3) errs.push('Add at least 3 players.');
@@ -500,18 +512,6 @@ function pickWord(category,difficulty){
   const pool = WORDS.filter(w => (category==='any'||w.category===category) && (difficulty? w.difficulty===difficulty : true));
   return pool.length ? sample(pool) : null;
 }
-function pickQuestions(difficulty){
-  const same = QUESTIONS.same.filter(q=>q.difficulty===difficulty);
-  const alt = QUESTIONS.alt.filter(q=>q.difficulty===difficulty);
-  selectedQuestion = sample(same.length?same:QUESTIONS.same);
-  altQuestion = sample(alt.length?alt:QUESTIONS.alt);
-}
-
-/* ==== Screens ==== */
-function show(id){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  $(id).classList.add('active');
-}
 
 /* ==== Build players grid ==== */
 function buildPlayersGrid(){
@@ -520,18 +520,26 @@ function buildPlayersGrid(){
   players.forEach((name, idx)=>{
     const div = document.createElement('div');
     div.className = 'player';
+    if(revealedSet.has(idx)) div.classList.add('locked');
     div.setAttribute('role','button');
     div.setAttribute('aria-label',`Reveal for ${name}`);
     div.innerHTML = `
       <div class="avatar">${(name[0]||'?').toUpperCase()}</div>
       <div class="pname">${name}</div>
     `;
-    div.addEventListener('click', ()=> openReveal(idx));
+    div.addEventListener('click', ()=>{
+      if(revealedSet.has(idx)) return; // lockout
+      openReveal(idx);
+    });
     grid.appendChild(div);
   });
+
+  // Show dramatic button when all revealed
+  const allRevealed = revealedSet.size === players.length && players.length > 0;
+  $('revealImpsBtn').classList.toggle('hidden', !allRevealed);
 }
 
-/* ==== Reveal overlay logic (matching your flows) ==== */
+/* ==== Overlay reveal with flip animation ==== */
 let currentRevealIdx = null;
 function openReveal(idx){
   currentRevealIdx = idx;
@@ -540,54 +548,68 @@ function openReveal(idx){
   const showCat = $('showCatImp').checked;
   const showHint = $('showHintImp').checked;
 
-  $('revealTitle').textContent = roundMode==='word' ? `The word for ${name}` : `The question for ${name}`;
-  $('revealCat').textContent = roundMode==='word' && showCat ? `Category: ${selectedWord.topic}` : (roundMode==='word' ? `Category: —` : `Mode: Question`);
+  $('revealTitle').textContent = `The word for ${name}`;
+  $('revealCat').textContent = showCat ? `Category: ${selectedWord.topic}` : `Category: —`;
 
-  // Reset boxes
-  $('tapText').style.display = roundMode==='word' ? 'block' : 'none';
-  $('wordBox').style.display = 'none';
-  $('impBox').style.display = 'none';
-  $('hintBox').style.display = 'none';
+  const flip = $('flipBox');
+  flip.classList.remove('revealed');
+  flip.classList.add('glow');
+  setTimeout(()=> flip.classList.remove('glow'), 600);
+  $('wordOrRole').className = isImp ? 'imposter' : 'word';
+  $('wordOrRole').textContent = isImp ? 'Imposter' : '—';
 
-  if(roundMode==='word'){
+  $('hintLine').style.display = 'none';
+
+  // Front tap to flip
+  flip.onclick = ()=>{
+    flip.classList.add('revealed');
     if(isImp){
-      // Impostor sees "Imposter", optional category and hint
-      $('impBox').style.display = 'block';
-      if(showCat){ $('revealCat').textContent = `Category: ${selectedWord.topic}`; }
+      $('wordOrRole').textContent = 'Imposter';
       if(showHint && selectedWord.hints && selectedWord.hints.length){
-        $('hintBox').style.display = 'block';
+        $('hintLine').style.display = 'block';
         $('hintText').textContent = sample(selectedWord.hints);
       }
-      // No tap needed for impostor
-      $('tapText').style.display = 'none';
     }else{
-      // Civilian: tap to reveal word
-      $('tapText').style.display = 'block';
-      $('tapBox').onclick = ()=>{
-        $('tapText').style.display = 'none';
-        $('wordBox').style.display = 'block';
-        $('wordBox').textContent = selectedWord.word;
-        $('tapBox').onclick = null;
-      };
+      $('wordOrRole').textContent = selectedWord.word;
     }
-  }else{
-    // Question mode: impostor gets alt question, others get same question
-    const q = isImp ? altQuestion : selectedQuestion;
-    $('wordBox').style.display = 'block';
-    $('wordBox').textContent = q.prompt;
-    $('tapText').style.display = 'none';
-  }
+    flip.onclick = null; // prevent second flip
+  };
 
   $('overlay').classList.add('show');
 }
-$('gotIt').addEventListener('click', ()=> $('overlay').classList.remove('show'));
-$('closeReveal').addEventListener('click', ()=> $('overlay').classList.remove('show'));
+$('gotIt').addEventListener('click', ()=>{
+  $('overlay').classList.remove('show');
+  if(currentRevealIdx!=null){
+    revealedSet.add(currentRevealIdx);
+    buildPlayersGrid(); // update lockout state
+  }
+});
+$('closeReveal').addEventListener('click', ()=>{
+  $('overlay').classList.remove('show');
+});
 
-/* ==== Event wiring ==== */
+/* ==== Dramatic impostor reveal ==== */
+$('revealImpsBtn').addEventListener('click', ()=>{
+  const names = [...impostorIndices].map(i=> players[i]);
+  const wrap = $('impNames');
+  wrap.innerHTML = '';
+  names.forEach(n=>{
+    const span = document.createElement('div');
+    span.className = 'imp-name';
+    span.textContent = n;
+    wrap.appendChild(span);
+  });
+  $('impVeil').style.display = 'flex';
+});
+$('impClose').addEventListener('click', ()=>{
+  $('impVeil').style.display = 'none';
+});
+
+/* ==== Flow wiring ==== */
 document.getElementById('startBtn').addEventListener('click', ()=>{
-  const modeEl = document.querySelector('input[name="mode"]:checked');
-  roundMode = modeEl ? modeEl.value : 'word';
   players = parsePlayers($('names').value);
+  revealedSet.clear();
+
   const n = players.length;
   const k = parseInt($('numImps').value,10);
   const category = $('category').value;
@@ -595,9 +617,6 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
 
   const errs = validate(n,k);
   $('setupStatus').innerHTML = '';
-  if(n !== parseInt($('numPlayers').value,10)){
-    $('setupStatus').innerHTML += '<span class="tag">Number of players updated to match list.</span>';
-  }
   if(errs.length){
     errs.forEach(e=>{
       const el=document.createElement('span'); el.className='tag'; el.textContent=e; $('setupStatus').appendChild(el);
@@ -605,16 +624,11 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
     return;
   }
 
-  assignImpostors(n, clamp(k,1,n-1));
-
-  if(roundMode==='word'){
-    selectedWord = pickWord(category,difficulty);
-    if(!selectedWord){
-      $('setupStatus').innerHTML = '<span class="tag">No words for that category/difficulty.</span>';
-      return;
-    }
-  }else{
-    pickQuestions(difficulty);
+  assignImpostors(n, Math.min(k, Math.max(1, n-1)));
+  selectedWord = pickWord(category,difficulty);
+  if(!selectedWord){
+    $('setupStatus').innerHTML = '<span class="tag">No words for that category/difficulty.</span>';
+    return;
   }
 
   // Starter
@@ -623,11 +637,11 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
   // Tags
   $('tagPlayers').textContent = n;
   $('tagImps').textContent = impostorIndices.size;
-  $('tagCat').textContent = roundMode==='word' ? (selectedWord.topic + (category!=='any' ? ` (${category})` : '')) : '—';
+  $('tagCat').textContent = selectedWord.topic + (category!=='any' ? ` (${category})` : '');
   $('tagDiff').textContent = difficulty;
   $('tagStarter').textContent = players[starterIndex];
 
-  // Build players screen
+  // Build players
   buildPlayersGrid();
   show('screen-players');
 });
@@ -637,11 +651,22 @@ document.getElementById('toRound').addEventListener('click', ()=>{
   if(!players.length) return;
   $('roundStarter').textContent = players[starterIndex];
   $('roundImps').textContent = impostorIndices.size;
-  $('roundCat').textContent = roundMode==='word' ? selectedWord.topic : '—';
+  $('roundCat').textContent = selectedWord.topic;
   $('roundDiff').textContent = $('difficulty').value;
   show('screen-round');
 });
-document.getElementById('newRound').addEventListener('click', ()=> show('screen-setup'));
+document.getElementById('newRound').addEventListener('click', ()=>{
+  // Reset everything but keep names
+  revealedSet.clear();
+  impostorIndices.clear();
+  selectedWord = null;
+  $('tagPlayers').textContent = '—';
+  $('tagImps').textContent = '—';
+  $('tagCat').textContent = '—';
+  $('tagDiff').textContent = '—';
+  $('tagStarter').textContent = '—';
+  show('screen-setup');
+});
 </script>
 </body>
 </html>
