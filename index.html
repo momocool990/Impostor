@@ -53,6 +53,7 @@
   textarea,select,input[type=text],input[type=number]{
     width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--border); background:#0f1130; color:var(--text); outline:none;
   }
+  textarea::placeholder{color:#8386ad}
   textarea{min-height:120px; resize:vertical}
   .row{display:flex; gap:12px}
   .row>*{flex:1}
@@ -117,9 +118,7 @@
   .rsub{color:var(--muted); margin:0 0 10px}
 
   /* Tap box with flip animation */
-  .box{
-    perspective:900px; margin-top:8px;
-  }
+  .box{perspective:900px; margin-top:8px;}
   .flip{
     position:relative; width:100%; height:140px;
     transform-style:preserve-3d; transition:transform .6s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease;
@@ -239,10 +238,10 @@
           <div class="divider"></div>
 
           <label for="names">Players (one per line)</label>
-          <textarea id="names">Mrs Belshaw
+          <textarea id="names" placeholder="Mrs Belshaw
 Miss Savage
 Miss Benjelloun
-Miss Connel</textarea>
+Miss Connel"></textarea>
 
           <div class="actions">
             <button id="startBtn" class="btn primary">Start game</button>
@@ -511,6 +510,12 @@ function assignImpostors(n,k){
 function pickWord(category,difficulty){
   const pool = WORDS.filter(w => (category==='any'||w.category===category) && (difficulty? w.difficulty===difficulty : true));
   return pool.length ? sample(pool) : null;
+}
+
+/* ==== Screens ==== */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
 }
 
 /* ==== Build players grid ==== */
