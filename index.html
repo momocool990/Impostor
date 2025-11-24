@@ -57,10 +57,10 @@
           <option value="technology">Technology</option>
         </select>
       </label>
-      <textarea id="names" placeholder="Mrs Belshaw
-Miss Savage
-Miss Benjelloun
-Miss Connel"></textarea>
+      <textarea id="names" placeholder="Mrs Savage
+Mrs Belshaw
+Mr Higgins
+Mr Hamilton"></textarea>
       <button id="startBtn" class="btn primary">Start Game</button>
       <div id="setupStatus"></div>
     </div>
@@ -106,12 +106,13 @@ Miss Connel"></textarea>
 </div>
 
 <script>
-// Build WORDS array programmatically
+// Build WORDS array programmatically (~100 words)
 const WORDS = [];
 function addWords(topic, category, difficulty, words) {
   words.forEach(w => WORDS.push({word:w, topic, category, difficulty}));
 }
 
+// Example categories (5 easy + 5 medium + 5 hard each)
 addWords("Food","food","easy",["Pizza","Burger","Sandwich","Pasta","Cake"]);
 addWords("Food","food","medium",["Sushi","Curry","Falafel","Quiche","Dumplings"]);
 addWords("Food","food","hard",["Brioche","Ratatouille","Gazpacho","Kimchi","Tiramisu"]);
@@ -144,9 +145,6 @@ addWords("Technology","technology","easy",["Keyboard","Mouse","Screen","Printer"
 addWords("Technology","technology","medium",["Router","Database","Browser","Server","Firewall"]);
 addWords("Technology","technology","hard",["Algorithm","Blockchain","Compiler","Encryption","API"]);
 
-<script>
-// ... WORDS array already built above ...
-
 // Game state
 let players = [];
 let impostorIndices = new Set();
@@ -161,18 +159,18 @@ function show(id){
   $(id).classList.add('active');
 }
 
-function buildPlayers(){
+function buildPlayersGrid(){
   const grid = $('playersGrid'); grid.innerHTML='';
-  players.forEach((name,i)=>{
+  players.forEach((p,i)=>{
     const div=document.createElement('div');
     div.className='player';
-    if(revealed.has(i)) div.classList.add('locked');
-    div.textContent=name;
-    div.onclick=()=>{ if(revealed.has(i)) return; openReveal(i); };
-    grid.appendChild(div);
-  });
-  $('revealImpsBtn').style.display=(revealed.size===players.length && players.length>0) ? 'inline-block' : 'none';
-}
+    div.textContent=p;
+    if(revealed.has(i)){
+      div.classList.add('locked');
+    } else {
+      div.onclick=()=>open
+      <script>
+// ... append after buildPlayersGrid() ...
 
 function openReveal(i){
   const isImp = impostorIndices.has(i);
@@ -184,34 +182,40 @@ function openReveal(i){
   $('gotIt').onclick = () => {
     $('overlay').classList.remove('show');
     revealed.add(i);
-    buildPlayers();
+    buildPlayersGrid();
+    // Show impostor reveal when everyone has seen their card
+    $('revealImpsBtn').style.display = (revealed.size === players.length) ? 'inline-block' : 'none';
   };
+}
+
+function pickWord(category, difficulty){
+  const pool1 = WORDS.filter(w => (category==='any' || w.category===category) && w.difficulty===difficulty);
+  const pool2 = WORDS.filter(w => (category==='any' || w.category===category));
+  if (pool1.length) return pool1[randInt(pool1.length)];
+  if (pool2.length) return pool2[randInt(pool2.length)];
+  return WORDS[randInt(WORDS.length)];
 }
 
 $('startBtn').onclick = () => {
   players = $('names').value.split('\n').map(s=>s.trim()).filter(Boolean);
   const n = players.length;
-  const k = parseInt($('numImps').value,10);
-  const cat = $('category').value;
-  const diff = $('difficulty').value;
+  const k = parseInt($('numImps').value, 10);
+  const category = $('category').value;
+  const difficulty = $('difficulty').value;
 
-  $('setupStatus').textContent='';
-  if(n<3){ $('setupStatus').textContent='Need at least 3 players.'; return; }
-  if(!Number.isFinite(k) || k<1 || k>=n){ $('setupStatus').textContent='Invalid impostor count.'; return; }
+  $('setupStatus').textContent = '';
+  if (n < 3) { $('setupStatus').textContent = 'Need at least 3 players.'; return; }
+  if (!Number.isFinite(k) || k < 1 || k >= n) { $('setupStatus').textContent = 'Invalid impostor count.'; return; }
 
-  // Assign impostors randomly
+  // Completely random impostor assignment
   impostorIndices = new Set();
-  while(impostorIndices.size<k){
-    impostorIndices.add(randInt(n));
-  }
+  while (impostorIndices.size < k) impostorIndices.add(randInt(n));
 
-  // Pick word
-  const pool1 = WORDS.filter(w=>(cat==='any'||w.category===cat)&&w.difficulty===diff);
-  const pool2 = WORDS.filter(w=>(cat==='any'||w.category===cat));
-  selectedWord = pool1.length ? pool1[randInt(pool1.length)] : (pool2.length ? pool2[randInt(pool2.length)] : WORDS[randInt(WORDS.length)]);
+  // Pick word (about 100 in the bank, generated earlier)
+  selectedWord = pickWord(category, difficulty);
 
   revealed.clear();
-  buildPlayers();
+  buildPlayersGrid();
   show('playersScreen');
 };
 
@@ -219,11 +223,17 @@ $('toRound').onclick = () => show('roundScreen');
 $('newRound').onclick = () => show('setup');
 
 $('revealImpsBtn').onclick = () => {
-  const names = [...impostorIndices].map(i=>players[i]);
+  const names = [...impostorIndices].map(i => players[i]);
   $('impNames').textContent = names.join(', ');
   $('impOverlay').classList.add('show');
 };
 $('impClose').onclick = () => $('impOverlay').classList.remove('show');
+
+// Optional: simple clock
+function updateClock(){
+  const d = new Date();
+  const opts = { hour:'numeric', minute:'2-digit' };
+  $('clock').textContent = d.toLocaleTimeString([], opts);
+}
+updateClock(); setInterval(updateClock, 30000);
 </script>
-</body>
-</html>
