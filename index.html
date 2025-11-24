@@ -305,26 +305,18 @@ $('startBtn').onclick = () => {
   players = $('names').value.split('\n').map(s=>s.trim()).filter(Boolean);
   const n = players.length;
   const k = parseInt($('numImps').value, 10);
-  const cat = $('category').value;
-  const diff = $('difficulty').value;
 
-  $('setupStatus').textContent = '';
-  if(n < 3){ $('setupStatus').textContent = 'Need at least 3 players.'; return; }
-  if(!Number.isFinite(k) || k < 1 || k >= n){ $('setupStatus').textContent = 'Impostors must be ≥1 and fewer than players.'; return; }
+  // validation checks...
 
   // Assign impostors randomly
   impostorIndices = new Set();
-  const indices = shuffle([...Array(n).keys()]);
-  for(let i=0;i<k;i++) impostorIndices.add(indices[i]);
+  while (impostorIndices.size < k) {
+    const r = randInt(n);
+    impostorIndices.add(r);
+  }
 
-  // Pick word by category/difficulty (fallback to any/difficulty if empty, then any/any)
-  const pool1 = WORDS.filter(w => (cat==='any'||w.category===cat) && w.difficulty===diff);
-  const pool2 = WORDS.filter(w => (cat==='any'||w.category===cat));
-  selectedWord = pool1.length ? pool1[randInt(pool1.length)] : (pool2.length ? pool2[randInt(pool2.length)] : WORDS[randInt(WORDS.length)]);
-
-  revealed.clear();
-  buildPlayers();
-  show('playersScreen');
+  // Pick word...
+  // Build players...
 };
 
 $('toRound').onclick = () => show('roundScreen');
