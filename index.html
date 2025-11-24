@@ -112,7 +112,7 @@ function addWords(topic, category, difficulty, words) {
   words.forEach(w => WORDS.push({word:w, topic, category, difficulty}));
 }
 
-// Example categories (5 easy + 5 medium + 5 hard each)
+// 8 categories × 15 words = 120 words
 addWords("Food","food","easy",["Pizza","Burger","Sandwich","Pasta","Cake"]);
 addWords("Food","food","medium",["Sushi","Curry","Falafel","Quiche","Dumplings"]);
 addWords("Food","food","hard",["Brioche","Ratatouille","Gazpacho","Kimchi","Tiramisu"]);
@@ -168,22 +168,22 @@ function buildPlayersGrid(){
     if(revealed.has(i)){
       div.classList.add('locked');
     } else {
-      div.onclick=()=>open
-      <script>
-// ... append after buildPlayersGrid() ...
+      div.onclick=()=>openReveal(i);
+    }
+    grid.appendChild(div);
+  });
+}
 
 function openReveal(i){
   const isImp = impostorIndices.has(i);
   $('revealTitle').textContent = `The word for ${players[i]}`;
-  $('revealCat').textContent = `Category: ${selectedWord.topic}`;
-  $('wordOrRole').textContent = isImp ? 'Imposter' : selectedWord.word;
+    $('wordOrRole').textContent = isImp ? 'Imposter' : selectedWord.word;
   $('wordOrRole').className = isImp ? 'imposter' : 'word';
   $('overlay').classList.add('show');
   $('gotIt').onclick = () => {
     $('overlay').classList.remove('show');
     revealed.add(i);
     buildPlayersGrid();
-    // Show impostor reveal when everyone has seen their card
     $('revealImpsBtn').style.display = (revealed.size === players.length) ? 'inline-block' : 'none';
   };
 }
@@ -211,7 +211,7 @@ $('startBtn').onclick = () => {
   impostorIndices = new Set();
   while (impostorIndices.size < k) impostorIndices.add(randInt(n));
 
-  // Pick word (about 100 in the bank, generated earlier)
+  // Pick word
   selectedWord = pickWord(category, difficulty);
 
   revealed.clear();
@@ -229,7 +229,7 @@ $('revealImpsBtn').onclick = () => {
 };
 $('impClose').onclick = () => $('impOverlay').classList.remove('show');
 
-// Optional: simple clock
+// Simple clock
 function updateClock(){
   const d = new Date();
   const opts = { hour:'numeric', minute:'2-digit' };
@@ -237,3 +237,6 @@ function updateClock(){
 }
 updateClock(); setInterval(updateClock, 30000);
 </script>
+</body>
+</html>
+
