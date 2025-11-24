@@ -1,159 +1,322 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Impostor Game</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #0d0d0d;
-      color: white;
-      text-align: center;
-    }
-    .screen {
-      display: none;
-      padding: 20px;
-    }
-    .active {
-      display: block;
-    }
-    .player-card {
-      display: inline-block;
-      width: 40%;
-      margin: 10px;
-      padding: 20px;
-      border: 2px solid #888;
-      border-radius: 10px;
-      background-color: #1a1a1a;
-      cursor: pointer;
-    }
-    .player-card:hover {
-      border-color: #fff;
-    }
-    .word-box {
-      margin-top: 50px;
-      font-size: 24px;
-      padding: 20px;
-      border-radius: 10px;
-      background-color: #222;
-      color: #0f0;
-      box-shadow: 0 0 10px #0f0;
-    }
-    .reveal-button {
-      margin-top: 30px;
-      padding: 15px 30px;
-      font-size: 18px;
-      background-color: #800080;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .reveal-button:hover {
-      background-color: #a020f0;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Imposter — Party Word Game</title>
+<style>
+  body { margin:0; font-family:sans-serif; background:#0a0b14; color:#eee; }
+  .app { max-width:800px; margin:0 auto; padding:20px; }
+  .screen { display:none; }
+  .screen.active { display:block; }
+  .card { background:#111328; border:1px solid #2a2c4a; border-radius:12px; padding:16px; margin-bottom:20px; }
+  .btn { padding:10px 16px; border:none; border-radius:8px; cursor:pointer; }
+  .btn.primary { background:#7c4dff; color:#fff; }
+  .btn.danger { background:#ff3b5f; color:#fff; }
+  .btn.safe { background:#28c76f; color:#fff; }
+  .players { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .player { background:#1a1a2a; border:1px solid #2a2c4a; border-radius:10px; padding:12px; text-align:center; cursor:pointer; }
+  .player.locked { opacity:.5; cursor:not-allowed; }
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); display:none; align-items:center; justify-content:center; }
+  .overlay.show { display:flex; }
+  .reveal { background:#222; padding:20px; border-radius:12px; text-align:center; }
+  .imposter { font-weight:bold; color:#ff3b5f; }
+</style>
 </head>
 <body>
+<div class="app">
 
-<div id="setup" class="screen active">
-  <h1>Impostor Game Setup</h1>
-  <p>Enter player names (one per line):</p>
-  <textarea id="playerNames" rows="6" cols="30" placeholder="Alice&#10;Bob&#10;Charlie&#10;Dana"></textarea><br><br>
-  <label>Number of impostors: <input type="number" id="numImpostors" value="1" min="1"></label><br><br>
-  <label>Category: <input type="text" id="category" placeholder="Movies"></label><br><br>
-  <label>Real word: <input type="text" id="realWord" placeholder="Titanic"></label><br><br>
-  <label>Impostor word: <input type="text" id="fakeWord" placeholder="Imposter"></label><br><br>
-  <button class="reveal-button" onclick="startGame()">Start Game</button>
+  <!-- Setup -->
+  <section id="setup" class="screen active">
+    <div class="card">
+      <h2>Game setup</h2>
+      <label>Number of impostors <input id="numImps" type="number" min="1" value="1"></label>
+      <label>Category
+        <select id="category">
+          <option value="any">Any</option>
+          <option value="movies">Movies</option>
+          <option value="food">Food</option>
+          <option value="sports">Sports</option>
+          <option value="music">Music</option>
+          <option value="animals">Animals</option>
+          <option value="household">Household</option>
+          <option value="geography">Geography</option>
+          <option value="technology">Technology</option>
+        </select>
+      </label>
+      <label>Difficulty
+        <select id="difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
+      <label>Players (one per line)</label>
+      <textarea id="names" placeholder="Mrs Belshaw
+Miss Savage
+Miss Benjelloun
+Miss Connel"></textarea>
+      <button id="startBtn" class="btn primary">Start game</button>
+      <div id="setupStatus" style="margin-top:8px;"></div>
+    </div>
+  </section>
+
+  <!-- Players -->
+  <section id="playersScreen" class="screen">
+    <div class="card">
+      <h2>Players</h2>
+      <p>Tap your name to reveal your word, then pass the device.</p>
+      <div id="playersGrid" class="players"></div>
+      <button id="toRound" class="btn safe">Go to round</button>
+      <button id="revealImpsBtn" class="btn danger" style="display:none">Reveal Impostor(s)</button>
+    </div>
+  </section>
+
+  <!-- Round -->
+  <section id="roundScreen" class="screen">
+    <div class="card">
+      <h2>Round in progress</h2>
+      <p>Each player gives one clue. Then vote who’s the impostor.</p>
+      <button id="newRound" class="btn primary">New round</button>
+    </div>
+  </section>
+
 </div>
 
-<div id="playerReveal" class="screen">
-  <h2>Players</h2>
-  <p>Tap your name to reveal your word, then pass the device to the next player.</p>
-  <div id="playerCards"></div>
-  <button class="reveal-button" onclick="showImpostors()">Reveal Impostor(s)</button>
+<!-- Reveal overlay -->
+<div id="overlay" class="overlay">
+  <div class="reveal">
+    <h3 id="revealTitle">The word for —</h3>
+    <p id="revealCat">Category: —</p>
+    <div id="wordOrRole">—</div>
+    <button id="gotIt" class="btn primary">Got it!</button>
+  </div>
 </div>
 
-<div id="wordScreen" class="screen">
-  <h2 id="wordTitle"></h2>
-  <div class="word-box" id="wordBox"></div>
-  <button class="reveal-button" onclick="nextPlayer()">Got it!</button>
-</div>
-
-<div id="finalReveal" class="screen">
-  <h2>Impostor Reveal</h2>
-  <p>The impostor(s) were:</p>
-  <ul id="impostorList"></ul>
+<!-- Impostor reveal overlay -->
+<div id="impOverlay" class="overlay">
+  <div class="reveal">
+    <h2>Impostor(s)</h2>
+    <div id="impNames"></div>
+    <button id="impClose" class="btn danger">Close</button>
+  </div>
 </div>
 
 <script>
-  let players = [];
-  let impostors = [];
-  let currentIndex = 0;
+/* Expanded WORDS array (120 entries) */
+const WORDS = [
+  // Food (15)
+  {word:"Pizza",topic:"Food",category:"food",difficulty:"easy"},
+  {word:"Burger",topic:"Food",category:"food",difficulty:"easy"},
+  {word:"Sandwich",topic:"Food",category:"food",difficulty:"easy"},
+  {word:"Pasta",topic:"Food",category:"food",difficulty:"easy"},
+  {word:"Cake",topic:"Food",category:"food",difficulty:"easy"},
+  {word:"Sushi",topic:"Food",category:"food",difficulty:"medium"},
+  {word:"Curry",topic:"Food",category:"food",difficulty:"medium"},
+  {word:"Falafel",topic:"Food",category:"food",difficulty:"medium"},
+  {word:"Quiche",topic:"Food",category:"food",difficulty:"medium"},
+  {word:"Dumplings",topic:"Food",category:"food",difficulty:"medium"},
+  {word:"Brioche",topic:"Food",category:"food",difficulty:"hard"},
+  {word:"Ratatouille",topic:"Food",category:"food",difficulty:"hard"},
+  {word:"Gazpacho",topic:"Food",category:"food",difficulty:"hard"},
+  {word:"Kimchi",topic:"Food",category:"food",difficulty:"hard"},
+  {word:"Tiramisu",topic:"Food",category:"food",difficulty:"hard"},
 
-  function startGame() {
-    const names = document.getElementById("playerNames").value.trim().split("\n").map(n => n.trim()).filter(n => n);
-    const numImpostors = parseInt(document.getElementById("numImpostors").value);
-    const category = document.getElementById("category").value;
-    const realWord = document.getElementById("realWord").value;
-    const fakeWord = document.getElementById("fakeWord").value;
+  // Sports (15)
+  {word:"Football",topic:"Sports",category:"sports",difficulty:"easy"},
+  {word:"Basketball",topic:"Sports",category:"sports",difficulty:"easy"},
+  {word:"Tennis",topic:"Sports",category:"sports",difficulty:"easy"},
+  {word:"Rugby",topic:"Sports",category:"sports",difficulty:"easy"},
+  {word:"Swimming",topic:"Sports",category:"sports",difficulty:"easy"},
+  {word:"Cricket",topic:"Sports",category:"sports",difficulty:"medium"},
+  {word:"Badminton",topic:"Sports",category:"sports",difficulty:"medium"},
+  {word:"Hockey",topic:"Sports",category:"sports",difficulty:"medium"},
+  {word:"Volleyball",topic:"Sports",category:"sports",difficulty:"medium"},
+  {word:"Boxing",topic:"Sports",category:"sports",difficulty:"medium"},
+  {word:"Biathlon",topic:"Sports",category:"sports",difficulty:"hard"},
+  {word:"Dressage",topic:"Sports",category:"sports",difficulty:"hard"},
+  {word:"Curling",topic:"Sports",category:"sports",difficulty:"hard"},
+  {word:"Pentathlon",topic:"Sports",category:"sports",difficulty:"hard"},
+  {word:"Archery",topic:"Sports",category:"sports",difficulty:"hard"},
 
-    if (names.length < numImpostors + 1 || !realWord || !fakeWord) {
-      alert("Please enter enough players and valid words.");
-      return;
-    }
+  // Geography (15)
+  {word:"Desert",topic:"Geography",category:"geography",difficulty:"easy"},
+  {word:"Mountain",topic:"Geography",category:"geography",difficulty:"easy"},
+  {word:"River",topic:"Geography",category:"geography",difficulty:"easy"},
+  {word:"Island",topic:"Geography",category:"geography",difficulty:"easy"},
+  {word:"Forest",topic:"Geography",category:"geography",difficulty:"easy"},
+  {word:"Volcano",topic:"Geography",category:"geography",difficulty:"medium"},
+  {word:"Glacier",topic:"Geography",category:"geography",difficulty:"medium"},
+  {word:"Canyon",topic:"Geography",category:"geography",difficulty:"medium"},
+  {word:"Plateau",topic:"Geography",category:"geography",difficulty:"medium"},
+  {word:"Oasis",topic:"Geography",category:"geography",difficulty:"medium"},
+  {word:"Archipelago",topic:"Geography",category:"geography",difficulty:"hard"},
+  {word:"Isthmus",topic:"Geography",category:"geography",difficulty:"hard"},
+  {word:"Delta",topic:"Geography",category:"geography",difficulty:"hard"},
+  {word:"Fjord",topic:"Geography",category:"geography",difficulty:"hard"},
+  {word:"Atoll",topic:"Geography",category:"geography",difficulty:"hard"},
 
-    players = names.map(name => ({ name, role: "real", word: realWord }));
-    impostors = [];
+  // Technology (15)
+  {word:"Keyboard",topic:"Technology",category:"technology",difficulty:"easy"},
+  {word:"Mouse",topic:"Technology",category:"technology",difficulty:"easy"},
+  {word:"Screen",topic:"Technology",category:"technology",difficulty:"easy"},
+  {word:"Printer",topic:"Technology",category:"technology",difficulty:"easy"},
+  {word:"Wi-Fi",topic:"Technology",category:"technology",difficulty:"easy"},
+  {word:"Router",topic:"Technology",category:"technology",difficulty:"medium"},
+  {word:"Database",topic:"Technology",category:"technology",difficulty:"medium"},
+  {word:"Browser",topic:"Technology",category:"technology",difficulty:"medium"},
+  {word:"Server",topic:"Technology",category:"technology",difficulty:"medium"},
+  {word:"Firewall",topic:"Technology",category:"technology",difficulty:"medium"},
+  {word:"Algorithm",topic:"Technology",category:"technology",difficulty:"hard"},
+  {word:"Blockchain",topic:"Technology",category:"technology",difficulty:"hard"},
+  {word:"Compiler",topic:"Technology",category:"technology",difficulty:"hard"},
+  {word:"Encryption",topic:"Technology",category:"technology",difficulty:"hard"},
+  {word:"API",topic:"Technology",category:"technology",difficulty:"hard"},
 
-    while (impostors.length < numImpostors) {
-      const i = Math.floor(Math.random() * players.length);
-      if (players[i].role === "real") {
-        players[i].role = "impostor";
-        players[i].word = fakeWord;
-        impostors.push(players[i].name);
-      }
-    }
+  // Movies (15)
+  {word:"Titanic",topic:"Movies",category:"movies",difficulty:"easy"},
+  {word:"Superhero",topic:"Movies",category:"movies",difficulty:"easy"},
+  {word:"Villain",topic:"Movies",category:"movies",difficulty:"easy"},
+  {word:"Actor",topic:"Movies",category:"movies",difficulty:"easy"},
+  {word:"Scene",topic:"Movies",category:"movies",difficulty:"easy"},
+  {word:"Sequel",topic:"Movies",category:"movies",difficulty:"medium"},
+  {word:"Director",topic:"Movies",category:"movies",difficulty:"medium"},
+  {word:"Script",topic:"Movies",category:"movies",difficulty:"medium"},
+  {word:"Trailer",topic:"Movies",category:"movies",difficulty:"medium"},
+  {word:"Soundtrack",topic:"Movies",category:"movies",difficulty:"medium"},
+  {word:"Montage",topic:"Movies",category:"movies",difficulty:"hard"},
+  {word:"Cinematography",topic:"Movies",category:"movies",difficulty:"hard"},
+  {word:"Cameo",topic:"Movies",category:"movies",difficulty:"hard"},
+  {word:"Screenplay",topic:"Movies",category:"movies",difficulty:"hard"},
+  {word:"Franchise",topic:"Movies",category:"movies",difficulty:"hard"},
 
-    showScreen("playerReveal");
-    const container = document.getElementById("playerCards");
-    container.innerHTML = "";
-    players.forEach((p, i) => {
-      const card = document.createElement("div");
-      card.className = "player-card";
-      card.innerHTML = `<strong>${p.name}</strong>`;
-      card.onclick = () => revealWord(i, category);
-      container.appendChild(card);
-    });
-  }
+  // Music (15)
+  {word:"Guitar",topic:"Music",category:"music",difficulty:"easy"},
+  {word:"Piano",topic:"Music",category:"music",difficulty:"easy"},
+  {word:"Drum",topic:"Music",category:"music",difficulty:"easy"},
+  {word:"Singer",topic:"Music",category:"music",difficulty:"easy"},
+  {word:"Song",topic:"Music",category:"music",difficulty:"easy"},
+  {word:"Tempo",topic:"Music",category:"music",difficulty:"medium"},
+  {word:"Melody",topic:"Music",category:"music",difficulty:"medium"},
+  {word:"Harmony",topic:"Music",category:"music",difficulty:"medium"},
+  {word:"Choir",topic:"Music",category:"music",difficulty:"medium"},
+  {word:"Festival",topic:"Music",category:"music",difficulty:"medium"},
+  {word:"Polyrhythm",topic:"Music",category:"music",difficulty:"hard"},
+  {word:"Crescendo",topic:"Music",category:"music",difficulty:"hard"},
+  {word:"Fugue",topic:"Music",category:"music",difficulty:"hard"},
+  {word:"Overture",topic:"Music",category:"music",difficulty:"hard"},
+  {word:"Syncopation",topic:"Music",category:"music",difficulty:"hard"},
 
-  function revealWord(index, category) {
-    currentIndex = index;
-    document.getElementById("wordTitle").innerText = `The word for ${players[index].name}\nCategory: ${document.getElementById("category").value}`;
-    document.getElementById("wordBox").innerText = players[index].word;
-    showScreen("wordScreen");
-  }
+  // Animals (15)
+  {word:"Dog",topic:"Animals",category:"animals",difficulty:"easy"},
+  {word:"Cat",topic:"Animals",category:"animals",difficulty:"easy"},
+  {word:"Cow",topic:"Animals",category:"animals",difficulty:"easy"},
+  {word:"Horse",topic:"Animals",category:"animals",difficulty:"easy"},
+  {word:"Sheep",topic:"Animals",category:"animals",difficulty:"easy"},
+  {word:"Penguin",topic:"Animals",category:"animals",difficulty:"medium"},
+  {word:"Kangaroo",topic:"Animals",category:"animals",difficulty:"medium"},
+  {word:"Tiger",topic:"Animals",category:"animals",difficulty:"medium"},
+  {word:"Dolphin",topic:"Animals",category:"animals",difficulty:"medium"},
+  {word:"Eagle",topic:"Animals",category:"animals",difficulty:"medium"},
+  {word:"Axolotl",topic:"Animals",category:"animals",difficulty:"hard"},
+  {word:"Platypus",topic:"Animals",category:"animals",difficulty:"hard"},
+  {word:"Narwhal",topic:"Animals",category:"animals",difficulty:"hard"},
+  {word:"Chameleon",topic:"Animals",category:"animals",difficulty:"hard"},
+  {word:"Armadillo",topic:"Animals",category:"animals",difficulty:"hard"},
 
-  function nextPlayer() {
-    showScreen("playerReveal");
-  }
+  // Household (15)
+  {word:"Sofa",topic:"Household",category:"household",difficulty:"easy"},
+  {word:"Chair",topic:"Household",category:"household",difficulty:"easy"},
+  {word:"Bed",topic:"Household",category:"household",difficulty:"easy"},
+  {word:"Lamp",topic:"Household",category:"household",difficulty:"easy"},
+  {word:"Table",topic:"Household",category:"household",difficulty:"easy"},
+  {word:"Microwave",topic:"Household",category:"household",difficulty:"medium"},
+  {word:"Vacuum",topic:"Household",category:"household",difficulty:"medium"},
+  {word:"Fridge",topic:"Household",category:"household",difficulty:"medium"},
+  {word:"Curtain",topic:"Household",category:"household",difficulty:"medium"},
+  {word:"Mirror",topic:"Household",category:"household",difficulty:"medium"},
+  {word:"Decanter",topic:"Household",category:"household",difficulty:"hard"},
+  {word:"Chandelier",topic:"Household",category:"household",difficulty:"hard"},
+  {word:"Ottoman",topic:"Household",category:"household",difficulty:"hard"},
+  {word:"Wardrobe",topic:"Household",category:"household",difficulty:"hard"},
+  {word:"Tapestry",topic:"Household",category:"household",difficulty:"hard"},
+];
 
-  function showImpostors() {
-    showScreen("finalReveal");
-    const list = document.getElementById("impostorList");
-    list.innerHTML = "";
-    impostors.forEach(name => {
-      const li = document.createElement("li");
-      li.innerText = name;
-      list.appendChild(li);
-    });
-  }
+/* State */
+let players = [];
+let impostorIndices = new Set();
+let revealed = new Set();
+let selectedWord = null;
 
-  function showScreen(id) {
-    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-  }
+/* Helpers */
+const $ = (id) => document.getElementById(id);
+const randInt = (n) => Math.floor(Math.random() * n);
+const shuffle = (arr) => { for(let i=arr.length-1;i>0;i--){const j=randInt(i+1); [arr[i],arr[j]]=[arr[j],arr[i]]} return arr; };
+
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); }
+
+function buildPlayers(){
+  const grid = $('playersGrid'); grid.innerHTML = '';
+  players.forEach((name, i)=>{
+    const div = document.createElement('div');
+    div.className = 'player';
+    if(revealed.has(i)) div.classList.add('locked');
+    div.textContent = name;
+    div.onclick = () => { if(revealed.has(i)) return; openReveal(i); };
+    grid.appendChild(div);
+  });
+  $('revealImpsBtn').style.display = (revealed.size === players.length && players.length > 0) ? 'inline-block' : 'none';
+}
+
+function openReveal(i){
+  const isImp = impostorIndices.has(i);
+  $('revealTitle').textContent = `The word for ${players[i]}`;
+  $('revealCat').textContent = `Category: ${selectedWord.topic}`;
+  $('wordOrRole').textContent = isImp ? 'Imposter' : selectedWord.word;
+  $('wordOrRole').className = isImp ? 'imposter' : 'word';
+  $('overlay').classList.add('show');
+  $('gotIt').onclick = () => {
+    $('overlay').classList.remove('show');
+    revealed.add(i);
+    buildPlayers();
+  };
+}
+
+$('startBtn').onclick = () => {
+  players = $('names').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const n = players.length;
+  const k = parseInt($('numImps').value, 10);
+  const cat = $('category').value;
+  const diff = $('difficulty').value;
+
+  $('setupStatus').textContent = '';
+  if(n < 3){ $('setupStatus').textContent = 'Need at least 3 players.'; return; }
+  if(!Number.isFinite(k) || k < 1 || k >= n){ $('setupStatus').textContent = 'Impostors must be ≥1 and fewer than players.'; return; }
+
+  // Assign impostors randomly
+  impostorIndices = new Set();
+  const indices = shuffle([...Array(n).keys()]);
+  for(let i=0;i<k;i++) impostorIndices.add(indices[i]);
+
+  // Pick word by category/difficulty (fallback to any/difficulty if empty, then any/any)
+  const pool1 = WORDS.filter(w => (cat==='any'||w.category===cat) && w.difficulty===diff);
+  const pool2 = WORDS.filter(w => (cat==='any'||w.category===cat));
+  selectedWord = pool1.length ? pool1[randInt(pool1.length)] : (pool2.length ? pool2[randInt(pool2.length)] : WORDS[randInt(WORDS.length)]);
+
+  revealed.clear();
+  buildPlayers();
+  show('playersScreen');
+};
+
+$('toRound').onclick = () => show('roundScreen');
+$('newRound').onclick = () => show('setup');
+
+$('revealImpsBtn').onclick = () => {
+  const names = [...impostorIndices].map(i => players[i]);
+  $('impNames').textContent = names.join(', ');
+  $('impOverlay').classList.add('show');
+};
+$('impClose').onclick = () => $('impOverlay').classList.remove('show');
 </script>
-
 </body>
 </html>
