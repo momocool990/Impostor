@@ -28,10 +28,27 @@
 
   <!-- Setup -->
   <section id="setup" class="screen active">
-    <div class="card">
-      <h2>Game setup</h2>
-      <label>Number of impostors <input id="numImps" type="number" min="1" value="1"></label>
-      <label>Category
+  <div class="card">
+    <h2 style="margin-bottom:12px;">Game Setup</h2>
+
+    <div class="row">
+      <div class="field">
+        <label for="numImps">Number of impostors</label>
+        <input id="numImps" type="number" min="1" value="1">
+      </div>
+      <div class="field">
+        <label for="difficulty">Difficulty</label>
+        <select id="difficulty">
+          <option value="easy" selected>Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <div class="field">
+        <label for="category">Category</label>
         <select id="category">
           <option value="any">Any</option>
           <option value="movies">Movies</option>
@@ -43,23 +60,25 @@
           <option value="geography">Geography</option>
           <option value="technology">Technology</option>
         </select>
-      </label>
-      <label>Difficulty
-        <select id="difficulty">
-          <option value="easy">Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-      </label>
-      <label>Players (one per line)</label>
+      </div>
+      <div class="field">
+        <label><input id="showCatImp" type="checkbox" checked> Show category to impostor</label>
+        <label><input id="showHintImp" type="checkbox"> Show hint to impostor</label>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <label for="names">Players (one per line)</label>
       <textarea id="names" placeholder="Mrs Belshaw
 Miss Savage
 Miss Benjelloun
 Miss Connel"></textarea>
-      <button id="startBtn" class="btn primary">Start game</button>
-      <div id="setupStatus" style="margin-top:8px;"></div>
     </div>
-  </section>
+
+    <button id="startBtn" class="btn primary" style="margin-top:16px; width:100%;">Start Game</button>
+    <div id="setupStatus" style="margin-top:10px;"></div>
+  </div>
+</section>
 
   <!-- Players -->
   <section id="playersScreen" class="screen">
