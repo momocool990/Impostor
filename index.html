@@ -1,677 +1,159 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Imposter — Party Word Game</title>
-<meta name="theme-color" content="#241a3a" />
-<style>
-  :root{
-    --bg:#0a0b14; --panel:#111328; --text:#eaeaf3; --muted:#a6a7c2;
-    --primary:#7c4dff; --primary-2:#9b6dff; --accent:#00d4ff; --danger:#ff3b5f; --safe:#28c76f;
-    --border:#2a2c4a; --neon:#08f7fe;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial;
-    color:var(--text);
-    background:
-      radial-gradient(1200px 800px at 10% -10%, rgba(124,77,255,.18), transparent 60%),
-      radial-gradient(800px 600px at 90% 120%, rgba(8,247,254,.12), transparent 60%),
-      #0a0b14;
-  }
-
-  /* Status bar (visual) */
-  .sysbar{
-    display:flex; justify-content:space-between; align-items:center;
-    padding:10px 14px; color:#cfd0e9; font-size:.9rem; border-bottom:1px solid var(--border);
-    background:linear-gradient(90deg, rgba(124,77,255,.10), rgba(8,247,254,.08));
-    position:sticky; top:0; z-index:20; backdrop-filter:blur(6px);
-  }
-  .battery{display:flex; align-items:center; gap:6px}
-  .battery .cell{width:28px; height:14px; border:2px solid #cfd0e9; border-radius:3px; position:relative}
-  .battery .cell::after{content:""; position:absolute; right:-6px; top:3px; width:4px; height:8px; background:#cfd0e9; border-radius:1px}
-  .battery .fill{height:100%; background:#2bdc85; width:22%}
-
-  .app{max-width:920px; margin:0 auto; padding:16px}
-  .screen{display:none; animation:fade .22s ease}
-  .screen.active{display:block}
-  @keyframes fade{from{opacity:.01; transform:translateY(6px)} to{opacity:1; transform:none}}
-
-  .card{
-    background:linear-gradient(180deg, rgba(25,25,44,.95), rgba(17,18,38,.95));
-    border:1px solid var(--border); border-radius:22px; padding:18px;
-    box-shadow:0 20px 50px rgba(0,0,0,.45);
-  }
-  .card h2{margin:0 0 10px; font-size:1.15rem}
-  .sub{color:var(--muted); font-size:.92rem}
-  .grid{display:grid; gap:12px}
-  @media(min-width:900px){.grid.cols-2{grid-template-columns:1fr 1fr}}
-
-  label{display:block; color:var(--muted); font-size:.92rem; margin-bottom:6px}
-  textarea,select,input[type=text],input[type=number]{
-    width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--border); background:#0f1130; color:var(--text); outline:none;
-  }
-  textarea::placeholder{color:#8386ad}
-  textarea{min-height:120px; resize:vertical}
-  .row{display:flex; gap:12px}
-  .row>*{flex:1}
-
-  .btn{
-    display:inline-flex; align-items:center; justify-content:center; gap:.6rem; padding:12px 16px; border-radius:14px;
-    border:1px solid var(--border); background:#0f1130; color:var(--text); cursor:pointer;
-    transition:transform .04s ease, box-shadow .15s ease, background .15s ease;
-  }
-  .btn:hover{background:#131642}
-  .btn:active{transform:translateY(1px)}
-  .btn.primary{
-    background:linear-gradient(135deg, var(--primary), var(--primary-2)); border:none; color:white;
-    box-shadow:0 10px 26px rgba(124,77,255,.35);
-  }
-  .btn.ghost{background:transparent; border:1px dashed var(--border)}
-  .btn.danger{background:linear-gradient(135deg, #ff3b5f, #ff6b8a); border:none}
-  .btn.safe{background:linear-gradient(135deg, #22c55e, #2bdc85); border:none}
-  .btn.disabled{opacity:.5; pointer-events:none}
-
-  .tags{display:flex; gap:8px; flex-wrap:wrap}
-  .tag{
-    padding:8px 10px; border-radius:999px; font-size:.88rem;
-    background:#121538; border:1px solid var(--border); color:#cbd1f7;
-  }
-  .divider{height:1px; background:var(--border); margin:14px 0}
-
-  /* Players grid with neon avatars */
-  .players{
-    display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;
-  }
-  @media(min-width:640px){ .players{ grid-template-columns:1fr 1fr 1fr; } }
-  .player{
-    background:radial-gradient(400px 300px at 50% -40%, rgba(124,77,255,.18), transparent 70%), #101232;
-    border:1px solid var(--border); border-radius:18px; padding:14px; text-align:center; cursor:pointer; position:relative;
-    transition:transform .06s ease, box-shadow .2s ease, border-color .2s ease;
-  }
-  .player:hover{ transform:translateY(-2px); box-shadow:0 12px 30px rgba(124,77,255,.25); border-color:#3a3f68; }
-  .player.locked{ opacity:.55; cursor:not-allowed; border-color:#2a2c4a; }
-  .avatar{
-    width:68px; height:68px; border-radius:999px; margin:8px auto 10px;
-    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.6rem; letter-spacing:.3px;
-    color:white;
-    background:
-      radial-gradient(60px 60px at 30% 30%, rgba(8,247,254,.45), transparent 60%),
-      linear-gradient(135deg, #7c4dff, #00d4ff);
-    box-shadow:0 0 0 3px rgba(8,247,254,.25), 0 10px 26px rgba(0,0,0,.45);
-  }
-  .pname{font-weight:700; color:#eaeaf7; letter-spacing:.2px}
-
-  /* Overlay */
-  .overlay{position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-           background:radial-gradient(900px 520px at 50% -10%, rgba(124,77,255,.28), rgba(0,0,0,.8)); z-index:50}
-  .overlay.show{display:flex}
-  .reveal{
-    width:min(560px,92vw);
-    background:linear-gradient(180deg,#171842,#101233);
-    border:1px solid var(--border); border-radius:22px; padding:20px;
-    box-shadow:0 24px 60px rgba(0,0,0,.55);
-  }
-  .reveal h3{margin:0 0 6px}
-  .rsub{color:var(--muted); margin:0 0 10px}
-
-  /* Tap box with flip animation */
-  .box{perspective:900px; margin-top:8px;}
-  .flip{
-    position:relative; width:100%; height:140px;
-    transform-style:preserve-3d; transition:transform .6s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease;
-    border-radius:16px; overflow:hidden;
-    box-shadow:0 10px 26px rgba(0,0,0,.35);
-  }
-  .flip.glow{ box-shadow:0 0 24px rgba(124,77,255,.45), 0 10px 26px rgba(0,0,0,.45); }
-  .face{
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    backface-visibility:hidden; border:1px dashed var(--border);
-    background:linear-gradient(180deg,#121538,#0f1233);
-  }
-  .front{ }
-  .back{ transform:rotateY(180deg); }
-  .flip.revealed{ transform:rotateY(180deg) }
-
-  .tapText{font-size:1.05rem; color:#b8baf0}
-  .word{
-    font-size:1.35rem; font-weight:800; letter-spacing:.3px;
-    background:linear-gradient(135deg, #c6c7ff, #eaeaf7); -webkit-background-clip:text; background-clip:text; color:transparent;
-  }
-  .imposter{
-    display:inline-block; padding:14px 18px; border-radius:16px; font-weight:800; letter-spacing:.4px; color:white;
-    background:linear-gradient(135deg, #ff3b5f, #ff8fa3);
-    box-shadow:0 0 18px rgba(255,59,95,.45), inset 0 0 18px rgba(255,255,255,.12);
-  }
-  .actions{display:flex; justify-content:flex-end; gap:8px; margin-top:12px}
-
-  /* Dramatic impostor reveal overlay */
-  .imp-veil{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60;
-    background:radial-gradient(1000px 680px at 50% -20%, rgba(255,59,95,.25), rgba(0,0,0,.85));
-    animation:veilIn .4s ease;
-  }
-  @keyframes veilIn{from{opacity:0} to{opacity:1}}
-  .imp-card{
-    width:min(600px,92vw); text-align:center; padding:20px; border-radius:22px;
-    background:linear-gradient(180deg, #1a0f18, #240f17);
-    border:1px solid #5d1a28; box-shadow:0 30px 80px rgba(255,59,95,.35);
-  }
-  .imp-title{
-    font-size:1.6rem; font-weight:900; letter-spacing:.5px; color:white;
-    text-shadow:0 0 18px rgba(255,59,95,.6);
-    animation:pulseText 1.4s infinite;
-  }
-  @keyframes pulseText{
-    0%,100%{ text-shadow:0 0 10px rgba(255,59,95,.55) }
-    50%{ text-shadow:0 0 24px rgba(255,59,95,.85) }
-  }
-  .imp-names{ margin-top:12px; display:flex; flex-wrap:wrap; justify-content:center; gap:8px }
-  .imp-name{
-    border:1px solid #ff3b5f; color:#ffe6ea; padding:10px 14px; border-radius:14px; font-weight:800;
-    background:linear-gradient(135deg, #6b0f1a, #ff3b5f);
-    box-shadow:0 0 24px rgba(255,59,95,.45);
-    animation:breathe 1.8s infinite;
-  }
-  @keyframes breathe{
-    0%,100%{ transform:scale(1); }
-    50%{ transform:scale(1.06); }
-  }
-  .imp-actions{display:flex; justify-content:center; gap:10px; margin-top:14px}
-
-  /* Utility hidden */
-  .hidden{display:none}
-</style>
+  <title>Impostor Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #0d0d0d;
+      color: white;
+      text-align: center;
+    }
+    .screen {
+      display: none;
+      padding: 20px;
+    }
+    .active {
+      display: block;
+    }
+    .player-card {
+      display: inline-block;
+      width: 40%;
+      margin: 10px;
+      padding: 20px;
+      border: 2px solid #888;
+      border-radius: 10px;
+      background-color: #1a1a1a;
+      cursor: pointer;
+    }
+    .player-card:hover {
+      border-color: #fff;
+    }
+    .word-box {
+      margin-top: 50px;
+      font-size: 24px;
+      padding: 20px;
+      border-radius: 10px;
+      background-color: #222;
+      color: #0f0;
+      box-shadow: 0 0 10px #0f0;
+    }
+    .reveal-button {
+      margin-top: 30px;
+      padding: 15px 30px;
+      font-size: 18px;
+      background-color: #800080;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .reveal-button:hover {
+      background-color: #a020f0;
+    }
+  </style>
 </head>
 <body>
-  <div class="sysbar">
-    <div id="clock">—</div>
-    <div class="battery">
-      <span id="battText">22%</span>
-      <div class="cell"><div id="battFill" class="fill"></div></div>
-    </div>
-  </div>
 
-  <div class="app">
-    <!-- Setup -->
-    <section id="screen-setup" class="screen active">
-      <div class="grid cols-2">
-        <div class="card">
-          <h2>Game setup</h2>
-          <div class="row">
-            <div>
-              <label for="numImps">Number of impostors</label>
-              <input id="numImps" type="number" min="1" value="1" />
-            </div>
-            <div>
-              <label for="difficulty">Difficulty</label>
-              <select id="difficulty">
-                <option value="easy" selected>Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </div>
-          </div>
-          <div class="row" style="margin-top:8px">
-            <div>
-              <label for="category">Category</label>
-              <select id="category">
-                <option value="any">Any</option>
-                <option value="food">Food</option>
-                <option value="sports">Sports</option>
-                <option value="geography">Geography</option>
-                <option value="technology">Technology</option>
-                <option value="movies">Movies</option>
-                <option value="music">Music</option>
-                <option value="animals">Animals</option>
-                <option value="household">Household</option>
-              </select>
-              <div class="sub">Impostor sees the topic if enabled.</div>
-            </div>
-            <div>
-              <label><input id="showCatImp" type="checkbox" checked /> Show category to impostor</label>
-              <label style="margin-top:6px"><input id="showHintImp" type="checkbox" /> Show hint to impostor</label>
-            </div>
-          </div>
+<div id="setup" class="screen active">
+  <h1>Impostor Game Setup</h1>
+  <p>Enter player names (one per line):</p>
+  <textarea id="playerNames" rows="6" cols="30" placeholder="Alice&#10;Bob&#10;Charlie&#10;Dana"></textarea><br><br>
+  <label>Number of impostors: <input type="number" id="numImpostors" value="1" min="1"></label><br><br>
+  <label>Category: <input type="text" id="category" placeholder="Movies"></label><br><br>
+  <label>Real word: <input type="text" id="realWord" placeholder="Titanic"></label><br><br>
+  <label>Impostor word: <input type="text" id="fakeWord" placeholder="Imposter"></label><br><br>
+  <button class="reveal-button" onclick="startGame()">Start Game</button>
+</div>
 
-          <div class="divider"></div>
+<div id="playerReveal" class="screen">
+  <h2>Players</h2>
+  <p>Tap your name to reveal your word, then pass the device to the next player.</p>
+  <div id="playerCards"></div>
+  <button class="reveal-button" onclick="showImpostors()">Reveal Impostor(s)</button>
+</div>
 
-          <label for="names">Players (one per line)</label>
-          <textarea id="names" placeholder="Mrs Belshaw
-Miss Savage
-Miss Benjelloun
-Miss Connel"></textarea>
+<div id="wordScreen" class="screen">
+  <h2 id="wordTitle"></h2>
+  <div class="word-box" id="wordBox"></div>
+  <button class="reveal-button" onclick="nextPlayer()">Got it!</button>
+</div>
 
-          <div class="actions">
-            <button id="startBtn" class="btn primary">Start game</button>
-          </div>
-          <div id="setupStatus" class="tags" style="margin-top:10px"></div>
-        </div>
-
-        <div class="card">
-          <h2>Round summary</h2>
-          <div class="tags">
-            <span class="tag"><span class="sub">Players:</span> <span id="tagPlayers">—</span></span>
-            <span class="tag"><span class="sub">Impostors:</span> <span id="tagImps">—</span></span>
-            <span class="tag"><span class="sub">Category:</span> <span id="tagCat">—</span></span>
-            <span class="tag"><span class="sub">Difficulty:</span> <span id="tagDiff">—</span></span>
-            <span class="tag"><span class="sub">Starter:</span> <span id="tagStarter">—</span></span>
-          </div>
-          <div class="divider"></div>
-          <p class="sub">Tap your name to reveal your word. After all are revealed, hit “Reveal Impostor(s)”.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Players -->
-    <section id="screen-players" class="screen">
-      <div class="card">
-        <h2>Players</h2>
-        <p class="sub">Tap your name to reveal your word, then pass the device to the next player.</p>
-        <div id="playersGrid" class="players"></div>
-        <div class="actions">
-          <button id="toSetup" class="btn ghost">Back</button>
-          <button id="toRound" class="btn safe">Go to round</button>
-          <button id="revealImpsBtn" class="btn danger hidden">Reveal Impostor(s)</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Round -->
-    <section id="screen-round" class="screen">
-      <div class="card">
-        <h2>Round in progress</h2>
-        <div class="tags" style="margin-bottom:10px">
-          <span class="tag">Starter: <strong id="roundStarter">—</strong></span>
-          <span class="tag">Impostors: <strong id="roundImps">—</strong></span>
-          <span class="tag">Category: <strong id="roundCat">—</strong></span>
-          <span class="tag">Difficulty: <strong id="roundDiff">—</strong></span>
-        </div>
-        <div class="card" style="margin-top:10px">
-          <h2>One sentence clue each</h2>
-          <p class="sub">Specific enough to help, vague enough not to give it away. After one loop, discuss and vote.</p>
-          <div class="actions">
-            <button id="newRound" class="btn ghost">New round</button>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <!-- Reveal overlay -->
-  <div id="overlay" class="overlay" aria-hidden="true">
-    <div class="reveal" role="dialog" aria-modal="true">
-      <h3 id="revealTitle">The word for —</h3>
-      <p class="rsub" id="revealCat">Category: —</p>
-      <div class="box">
-        <div id="flipBox" class="flip">
-          <div class="face front center">
-            <div class="tapText">Tap the box to reveal</div>
-          </div>
-          <div class="face back center">
-            <div id="wordOrRole" class="word">—</div>
-          </div>
-        </div>
-        <div id="hintLine" class="sub" style="display:none; margin-top:8px">Hint: <span id="hintText">—</span></div>
-      </div>
-      <div class="actions">
-        <button id="gotIt" class="btn primary">Got it!</button>
-        <button id="closeReveal" class="btn ghost">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Dramatic impostor reveal -->
-  <div id="impVeil" class="imp-veil" aria-hidden="true">
-    <div class="imp-card">
-      <div class="imp-title">Impostor(s) Revealed</div>
-      <div id="impNames" class="imp-names"></div>
-      <div class="imp-actions">
-        <button id="impClose" class="btn danger">Close</button>
-      </div>
-    </div>
-  </div>
+<div id="finalReveal" class="screen">
+  <h2>Impostor Reveal</h2>
+  <p>The impostor(s) were:</p>
+  <ul id="impostorList"></ul>
+</div>
 
 <script>
-/* ==== Clock & battery visuals ==== */
-function updateClock(){
-  const now = new Date();
-  const opts = { hour: 'numeric', minute: '2-digit' };
-  const time = new Intl.DateTimeFormat(undefined, opts).format(now).toLowerCase();
-  const weekday = now.toLocaleDateString(undefined, { weekday:'short' });
-  const dayMonth = now.toLocaleDateString(undefined, { day:'numeric', month:'short' });
-  document.getElementById('clock').textContent = `${time} ${weekday} ${dayMonth}`;
-}
-updateClock(); setInterval(updateClock, 30_000);
-function setBattery(pct){
-  document.getElementById('battText').textContent = `${pct}%`;
-  document.getElementById('battFill').style.width = `${pct}%`;
-}
-setBattery(22);
+  let players = [];
+  let impostors = [];
+  let currentIndex = 0;
 
-/* ==== Expanded word bank: 120 words ==== */
-const WORDS = [
-  // Food
-  {word:"Pizza",topic:"Food",category:"food",difficulty:"easy",hints:["Cheese","Slice"]},
-  {word:"Burger",topic:"Food",category:"food",difficulty:"easy",hints:["Bun","Patty"]},
-  {word:"Sandwich",topic:"Food",category:"food",difficulty:"easy",hints:["Bread","Fillings"]},
-  {word:"Pasta",topic:"Food",category:"food",difficulty:"easy",hints:["Noodles","Sauce"]},
-  {word:"Cake",topic:"Food",category:"food",difficulty:"easy",hints:["Icing","Slice"]},
-  {word:"Sushi",topic:"Food",category:"food",difficulty:"medium",hints:["Rice","Roll"]},
-  {word:"Curry",topic:"Food",category:"food",difficulty:"medium",hints:["Spice","Sauce"]},
-  {word:"Falafel",topic:"Food",category:"food",difficulty:"medium",hints:["Chickpea","Wrap"]},
-  {word:"Quiche",topic:"Food",category:"food",difficulty:"medium",hints:["Egg","Pastry"]},
-  {word:"Dumplings",topic:"Food",category:"food",difficulty:"medium",hints:["Filling","Steamed"]},
-  {word:"Brioche",topic:"Food",category:"food",difficulty:"hard",hints:["Butter","Bakery"]},
-  {word:"Ratatouille",topic:"Food",category:"food",difficulty:"hard",hints:["Vegetable","French"]},
-  {word:"Gazpacho",topic:"Food",category:"food",difficulty:"hard",hints:["Cold","Soup"]},
-  {word:"Kimchi",topic:"Food",category:"food",difficulty:"hard",hints:["Fermented","Spicy"]},
-  {word:"Tiramisu",topic:"Food",category:"food",difficulty:"hard",hints:["Coffee","Layers"]},
-  // Sports
-  {word:"Football",topic:"Sports",category:"sports",difficulty:"easy",hints:["Goal","Pitch"]},
-  {word:"Basketball",topic:"Sports",category:"sports",difficulty:"easy",hints:["Hoop","Dribble"]},
-  {word:"Tennis",topic:"Sports",category:"sports",difficulty:"easy",hints:["Racket","Court"]},
-  {word:"Rugby",topic:"Sports",category:"sports",difficulty:"easy",hints:["Try","Scrum"]},
-  {word:"Swimming",topic:"Sports",category:"sports",difficulty:"easy",hints:["Pool","Stroke"]},
-  {word:"Cricket",topic:"Sports",category:"sports",difficulty:"medium",hints:["Wicket","Bat"]},
-  {word:"Badminton",topic:"Sports",category:"sports",difficulty:"medium",hints:["Shuttle","Net"]},
-  {word:"Hockey",topic:"Sports",category:"sports",difficulty:"medium",hints:["Stick","Ice/Field"]},
-  {word:"Volleyball",topic:"Sports",category:"sports",difficulty:"medium",hints:["Spike","Net"]},
-  {word:"Boxing",topic:"Sports",category:"sports",difficulty:"medium",hints:["Ring","Gloves"]},
-  {word:"Biathlon",topic:"Sports",category:"sports",difficulty:"hard",hints:["Ski","Rifle"]},
-  {word:"Dressage",topic:"Sports",category:"sports",difficulty:"hard",hints:["Horse","Routine"]},
-  {word:"Curling",topic:"Sports",category:"sports",difficulty:"hard",hints:["Stone","Sweep"]},
-  {word:"Pentathlon",topic:"Sports",category:"sports",difficulty:"hard",hints:["Five","Events"]},
-  {word:"Archery",topic:"Sports",category:"sports",difficulty:"hard",hints:["Bow","Target"]},
-  // Geography
-  {word:"Desert",topic:"Geography",category:"geography",difficulty:"easy",hints:["Sand","Dunes"]},
-  {word:"Mountain",topic:"Geography",category:"geography",difficulty:"easy",hints:["Peak","Climb"]},
-  {word:"River",topic:"Geography",category:"geography",difficulty:"easy",hints:["Flow","Bank"]},
-  {word:"Island",topic:"Geography",category:"geography",difficulty:"easy",hints:["Sea","Coast"]},
-  {word:"Forest",topic:"Geography",category:"geography",difficulty:"easy",hints:["Trees","Wild"]},
-  {word:"Volcano",topic:"Geography",category:"geography",difficulty:"medium",hints:["Lava","Erupt"]},
-  {word:"Glacier",topic:"Geography",category:"geography",difficulty:"medium",hints:["Ice","Slow"]},
-  {word:"Canyon",topic:"Geography",category:"geography",difficulty:"medium",hints:["Cliffs","Deep"]},
-  {word:"Plateau",topic:"Geography",category:"geography",difficulty:"medium",hints:["Flat","High"]},
-  {word:"Oasis",topic:"Geography",category:"geography",difficulty:"medium",hints:["Water","Desert"]},
-  {word:"Archipelago",topic:"Geography",category:"geography",difficulty:"hard",hints:["Islands","Group"]},
-  {word:"Isthmus",topic:"Geography",category:"geography",difficulty:"hard",hints:["Narrow","Land"]},
-  {word:"Delta",topic:"Geography",category:"geography",difficulty:"hard",hints:["River","Mouth"]},
-  {word:"Fjord",topic:"Geography",category:"geography",difficulty:"hard",hints:["Sea","Cliffs"]},
-  {word:"Atoll",topic:"Geography",category:"geography",difficulty:"hard",hints:["Coral","Ring"]},
-  // Technology
-  {word:"Keyboard",topic:"Technology",category:"technology",difficulty:"easy",hints:["Keys","Typing"]},
-  {word:"Mouse",topic:"Technology",category:"technology",difficulty:"easy",hints:["Pointer","Click"]},
-  {word:"Screen",topic:"Technology",category:"technology",difficulty:"easy",hints:["Display","Pixels"]},
-  {word:"Printer",topic:"Technology",category:"technology",difficulty:"easy",hints:["Ink","Paper"]},
-  {word:"Wi-Fi",topic:"Technology",category:"technology",difficulty:"easy",hints:["Wireless","Network"]},
-  {word:"Router",topic:"Technology",category:"technology",difficulty:"medium",hints:["Packets","DHCP"]},
-  {word:"Database",topic:"Technology",category:"technology",difficulty:"medium",hints:["Tables","Query"]},
-  {word:"Browser",topic:"Technology",category:"technology",difficulty:"medium",hints:["Tabs","Web"]},
-  {word:"Server",topic:"Technology",category:"technology",difficulty:"medium",hints:["Host","Requests"]},
-  {word:"Firewall",topic:"Technology",category:"technology",difficulty:"medium",hints:["Filter","Ports"]},
-  {word:"Algorithm",topic:"Technology",category:"technology",difficulty:"hard",hints:["Steps","Logic"]},
-  {word:"Blockchain",topic:"Technology",category:"technology",difficulty:"hard",hints:["Ledger","Blocks"]},
-  {word:"Compiler",topic:"Technology",category:"technology",difficulty:"hard",hints:["Code","Build"]},
-  {word:"Encryption",topic:"Technology",category:"technology",difficulty:"hard",hints:["Cipher","Keys"]},
-  {word:"API",topic:"Technology",category:"technology",difficulty:"hard",hints:["Interface","Calls"]},
-  // Movies
-  {word:"Superhero",topic:"Movies",category:"movies",difficulty:"easy",hints:["Cape","Power"]},
-  {word:"Villain",topic:"Movies",category:"movies",difficulty:"easy",hints:["Evil","Antagonist"]},
-  {word:"Actor",topic:"Movies",category:"movies",difficulty:"easy",hints:["Role","Cast"]},
-  {word:"Scene",topic:"Movies",category:"movies",difficulty:"easy",hints:["Shot","Set"]},
-  {word:"Popcorn",topic:"Movies",category:"movies",difficulty:"easy",hints:["Snack","Bucket"]},
-  {word:"Sequel",topic:"Movies",category:"movies",difficulty:"medium",hints:["Next","Part"]},
-  {word:"Director",topic:"Movies",category:"movies",difficulty:"medium",hints:["Set","Vision"]},
-  {word:"Script",topic:"Movies",category:"movies",difficulty:"medium",hints:["Dialogue","Pages"]},
-  {word:"Trailer",topic:"Movies",category:"movies",difficulty:"medium",hints:["Preview","Tease"]},
-  {word:"Soundtrack",topic:"Movies",category:"movies",difficulty:"medium",hints:["Music","Score"]},
-  {word:"Montage",topic:"Movies",category:"movies",difficulty:"hard",hints:["Sequence","Edit"]},
-  {word:"Cinematography",topic:"Movies",category:"movies",difficulty:"hard",hints:["Camera","Lighting"]},
-  {word:"Cameo",topic:"Movies",category:"movies",difficulty:"hard",hints:["Brief","Appearance"]},
-  {word:"Screenplay",topic:"Movies",category:"movies",difficulty:"hard",hints:["Script","Structure"]},
-  {word:"Franchise",topic:"Movies",category:"movies",difficulty:"hard",hints:["Series","Brand"]},
-  // Music
-  {word:"Guitar",topic:"Music",category:"music",difficulty:"easy",hints:["Strings","Pick"]},
-  {word:"Piano",topic:"Music",category:"music",difficulty:"easy",hints:["Keys","Pedal"]},
-  {word:"Drum",topic:"Music",category:"music",difficulty:"easy",hints:["Beat","Stick"]},
-  {word:"Singer",topic:"Music",category:"music",difficulty:"easy",hints:["Voice","Vocal"]},
-  {word:"Song",topic:"Music",category:"music",difficulty:"easy",hints:["Lyrics","Tune"]},
-  {word:"Tempo",topic:"Music",category:"music",difficulty:"medium",hints:["Speed","BPM"]},
-  {word:"Melody",topic:"Music",category:"music",difficulty:"medium",hints:["Tune","Lead"]},
-  {word:"Harmony",topic:"Music",category:"music",difficulty:"medium",hints:["Chord","Blend"]},
-  {word:"Choir",topic:"Music",category:"music",difficulty:"medium",hints:["Group","Sing"]},
-  {word:"Festival",topic:"Music",category:"music",difficulty:"medium",hints:["Stage","Crowd"]},
-  {word:"Polyrhythm",topic:"Music",category:"music",difficulty:"hard",hints:["Overlap","Timing"]},
-  {word:"Crescendo",topic:"Music",category:"music",difficulty:"hard",hints:["Grow","Louder"]},
-  {word:"Fugue",topic:"Music",category:"music",difficulty:"hard",hints:["Counterpoint","Baroque"]},
-  {word:"Overture",topic:"Music",category:"music",difficulty:"hard",hints:["Opening","Orchestra"]},
-  {word:"Syncopation",topic:"Music",category:"music",difficulty:"hard",hints:["Off‑beat","Accent"]},
-  // Animals
-  {word:"Dog",topic:"Animals",category:"animals",difficulty:"easy",hints:["Pet","Bark"]},
-  {word:"Cat",topic:"Animals",category:"animals",difficulty:"easy",hints:["Meow","Whiskers"]},
-  {word:"Cow",topic:"Animals",category:"animals",difficulty:"easy",hints:["Milk","Farm"]},
-  {word:"Horse",topic:"Animals",category:"animals",difficulty:"easy",hints:["Mane","Ride"]},
-  {word:"Sheep",topic:"Animals",category:"animals",difficulty:"easy",hints:["Wool","Flock"]},
-  {word:"Penguin",topic:"Animals",category:"animals",difficulty:"medium",hints:["Ice","Waddle"]},
-  {word:"Kangaroo",topic:"Animals",category:"animals",difficulty:"medium",hints:["Pouch","Jump"]},
-  {word:"Tiger",topic:"Animals",category:"animals",difficulty:"medium",hints:["Stripes","Big cat"]},
-  {word:"Dolphin",topic:"Animals",category:"animals",difficulty:"medium",hints:["Smart","Ocean"]},
-  {word:"Eagle",topic:"Animals",category:"animals",difficulty:"medium",hints:["Wings","Soar"]},
-  {word:"Axolotl",topic:"Animals",category:"animals",difficulty:"hard",hints:["Salamander","Smile"]},
-  {word:"Platypus",topic:"Animals",category:"animals",difficulty:"hard",hints:["Beak","Weird"]},
-  {word:"Narwhal",topic:"Animals",category:"animals",difficulty:"hard",hints:["Tusk","Arctic"]},
-  {word:"Chameleon",topic:"Animals",category:"animals",difficulty:"hard",hints:["Color","Change"]},
-  {word:"Armadillo",topic:"Animals",category:"animals",difficulty:"hard",hints:["Armor","Roll"]},
-  // Household
-  {word:"Sofa",topic:"Household",category:"household",difficulty:"easy",hints:["Cushion","Seat"]},
-  {word:"Chair",topic:"Household",category:"household",difficulty:"easy",hints:["Sit","Legs"]},
-  {word:"Bed",topic:"Household",category:"household",difficulty:"easy",hints:["Sleep","Pillow"]},
-  {word:"Lamp",topic:"Household",category:"household",difficulty:"easy",hints:["Light","Shade"]},
-  {word:"Table",topic:"Household",category:"household",difficulty:"easy",hints:["Eat","Surface"]},
-  {word:"Microwave",topic:"Household",category:"household",difficulty:"medium",hints:["Heat","Timer"]},
-  {word:"Vacuum",topic:"Household",category:"household",difficulty:"medium",hints:["Clean","Dust"]},
-  {word:"Fridge",topic:"Household",category:"household",difficulty:"medium",hints:["Cold","Food"]},
-  {word:"Curtain",topic:"Household",category:"household",difficulty:"medium",hints:["Window","Drape"]},
-  {word:"Mirror",topic:"Household",category:"household",difficulty:"medium",hints:["Reflect","Glass"]},
-  {word:"Decanter",topic:"Household",category:"household",difficulty:"hard",hints:["Pour","Wine"]},
-  {word:"Chandelier",topic:"Household",category:"household",difficulty:"hard",hints:["Ceiling","Crystals"]},
-  {word:"Ottoman",topic:"Household",category:"household",difficulty:"hard",hints:["Footrest","Seat"]},
-  {word:"Wardrobe",topic:"Household",category:"household",difficulty:"hard",hints:["Clothes","Doors"]},
-  {word:"Tapestry",topic:"Household",category:"household",difficulty:"hard",hints:["Wall","Woven"]},
-];
+  function startGame() {
+    const names = document.getElementById("playerNames").value.trim().split("\n").map(n => n.trim()).filter(n => n);
+    const numImpostors = parseInt(document.getElementById("numImpostors").value);
+    const category = document.getElementById("category").value;
+    const realWord = document.getElementById("realWord").value;
+    const fakeWord = document.getElementById("fakeWord").value;
 
-/* ==== State ==== */
-let players = [];
-let impostorIndices = new Set();
-let revealedSet = new Set(); // players who have revealed (lockout)
-let selectedWord = null;
-let starterIndex = null;
-
-/* ==== Helpers ==== */
-const $ = id => document.getElementById(id);
-const randInt = n => Math.floor(Math.random()*n);
-const sample = arr => arr[randInt(arr.length)];
-const shuffle = arr => { for(let i=arr.length-1;i>0;i--){const j=randInt(i+1); [arr[i],arr[j]]=[arr[j],arr[i]] } return arr };
-function parsePlayers(text){ return text.split('\n').map(s=>s.trim()).filter(Boolean); }
-function validate(n,k){
-  const errs=[];
-  if(n<3) errs.push('Add at least 3 players.');
-  if(!Number.isFinite(k)||k<1) errs.push('Impostors must be ≥ 1.');
-  if(k>=n) errs.push('Impostors must be fewer than players.');
-  return errs;
-}
-function assignImpostors(n,k){
-  impostorIndices = new Set();
-  const ix = shuffle([...Array(n).keys()]);
-  for(let i=0;i<k;i++) impostorIndices.add(ix[i]);
-}
-function pickWord(category,difficulty){
-  const pool = WORDS.filter(w => (category==='any'||w.category===category) && (difficulty? w.difficulty===difficulty : true));
-  return pool.length ? sample(pool) : null;
-}
-
-/* ==== Screens ==== */
-function show(id){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  $(id).classList.add('active');
-}
-
-/* ==== Build players grid ==== */
-function buildPlayersGrid(){
-  const grid = $('playersGrid');
-  grid.innerHTML = '';
-  players.forEach((name, idx)=>{
-    const div = document.createElement('div');
-    div.className = 'player';
-    if(revealedSet.has(idx)) div.classList.add('locked');
-    div.setAttribute('role','button');
-    div.setAttribute('aria-label',`Reveal for ${name}`);
-    div.innerHTML = `
-      <div class="avatar">${(name[0]||'?').toUpperCase()}</div>
-      <div class="pname">${name}</div>
-    `;
-    div.addEventListener('click', ()=>{
-      if(revealedSet.has(idx)) return; // lockout
-      openReveal(idx);
-    });
-    grid.appendChild(div);
-  });
-
-  // Show dramatic button when all revealed
-  const allRevealed = revealedSet.size === players.length && players.length > 0;
-  $('revealImpsBtn').classList.toggle('hidden', !allRevealed);
-}
-
-/* ==== Overlay reveal with flip animation ==== */
-let currentRevealIdx = null;
-function openReveal(idx){
-  currentRevealIdx = idx;
-  const isImp = impostorIndices.has(idx);
-  const name = players[idx];
-  const showCat = $('showCatImp').checked;
-  const showHint = $('showHintImp').checked;
-
-  $('revealTitle').textContent = `The word for ${name}`;
-  $('revealCat').textContent = showCat ? `Category: ${selectedWord.topic}` : `Category: —`;
-
-  const flip = $('flipBox');
-  flip.classList.remove('revealed');
-  flip.classList.add('glow');
-  setTimeout(()=> flip.classList.remove('glow'), 600);
-  $('wordOrRole').className = isImp ? 'imposter' : 'word';
-  $('wordOrRole').textContent = isImp ? 'Imposter' : '—';
-
-  $('hintLine').style.display = 'none';
-
-  // Front tap to flip
-  flip.onclick = ()=>{
-    flip.classList.add('revealed');
-    if(isImp){
-      $('wordOrRole').textContent = 'Imposter';
-      if(showHint && selectedWord.hints && selectedWord.hints.length){
-        $('hintLine').style.display = 'block';
-        $('hintText').textContent = sample(selectedWord.hints);
-      }
-    }else{
-      $('wordOrRole').textContent = selectedWord.word;
+    if (names.length < numImpostors + 1 || !realWord || !fakeWord) {
+      alert("Please enter enough players and valid words.");
+      return;
     }
-    flip.onclick = null; // prevent second flip
-  };
 
-  $('overlay').classList.add('show');
-}
-$('gotIt').addEventListener('click', ()=>{
-  $('overlay').classList.remove('show');
-  if(currentRevealIdx!=null){
-    revealedSet.add(currentRevealIdx);
-    buildPlayersGrid(); // update lockout state
-  }
-});
-$('closeReveal').addEventListener('click', ()=>{
-  $('overlay').classList.remove('show');
-});
+    players = names.map(name => ({ name, role: "real", word: realWord }));
+    impostors = [];
 
-/* ==== Dramatic impostor reveal ==== */
-$('revealImpsBtn').addEventListener('click', ()=>{
-  const names = [...impostorIndices].map(i=> players[i]);
-  const wrap = $('impNames');
-  wrap.innerHTML = '';
-  names.forEach(n=>{
-    const span = document.createElement('div');
-    span.className = 'imp-name';
-    span.textContent = n;
-    wrap.appendChild(span);
-  });
-  $('impVeil').style.display = 'flex';
-});
-$('impClose').addEventListener('click', ()=>{
-  $('impVeil').style.display = 'none';
-});
+    while (impostors.length < numImpostors) {
+      const i = Math.floor(Math.random() * players.length);
+      if (players[i].role === "real") {
+        players[i].role = "impostor";
+        players[i].word = fakeWord;
+        impostors.push(players[i].name);
+      }
+    }
 
-/* ==== Flow wiring ==== */
-document.getElementById('startBtn').addEventListener('click', ()=>{
-  players = parsePlayers($('names').value);
-  revealedSet.clear();
-
-  const n = players.length;
-  const k = parseInt($('numImps').value,10);
-  const category = $('category').value;
-  const difficulty = $('difficulty').value;
-
-  const errs = validate(n,k);
-  $('setupStatus').innerHTML = '';
-  if(errs.length){
-    errs.forEach(e=>{
-      const el=document.createElement('span'); el.className='tag'; el.textContent=e; $('setupStatus').appendChild(el);
+    showScreen("playerReveal");
+    const container = document.getElementById("playerCards");
+    container.innerHTML = "";
+    players.forEach((p, i) => {
+      const card = document.createElement("div");
+      card.className = "player-card";
+      card.innerHTML = `<strong>${p.name}</strong>`;
+      card.onclick = () => revealWord(i, category);
+      container.appendChild(card);
     });
-    return;
   }
 
-  assignImpostors(n, Math.min(k, Math.max(1, n-1)));
-  selectedWord = pickWord(category,difficulty);
-  if(!selectedWord){
-    $('setupStatus').innerHTML = '<span class="tag">No words for that category/difficulty.</span>';
-    return;
+  function revealWord(index, category) {
+    currentIndex = index;
+    document.getElementById("wordTitle").innerText = `The word for ${players[index].name}\nCategory: ${document.getElementById("category").value}`;
+    document.getElementById("wordBox").innerText = players[index].word;
+    showScreen("wordScreen");
   }
 
-  // Starter
-  starterIndex = randInt(n);
+  function nextPlayer() {
+    showScreen("playerReveal");
+  }
 
-  // Tags
-  $('tagPlayers').textContent = n;
-  $('tagImps').textContent = impostorIndices.size;
-  $('tagCat').textContent = selectedWord.topic + (category!=='any' ? ` (${category})` : '');
-  $('tagDiff').textContent = difficulty;
-  $('tagStarter').textContent = players[starterIndex];
+  function showImpostors() {
+    showScreen("finalReveal");
+    const list = document.getElementById("impostorList");
+    list.innerHTML = "";
+    impostors.forEach(name => {
+      const li = document.createElement("li");
+      li.innerText = name;
+      list.appendChild(li);
+    });
+  }
 
-  // Build players
-  buildPlayersGrid();
-  show('screen-players');
-});
-
-document.getElementById('toSetup').addEventListener('click', ()=> show('screen-setup'));
-document.getElementById('toRound').addEventListener('click', ()=>{
-  if(!players.length) return;
-  $('roundStarter').textContent = players[starterIndex];
-  $('roundImps').textContent = impostorIndices.size;
-  $('roundCat').textContent = selectedWord.topic;
-  $('roundDiff').textContent = $('difficulty').value;
-  show('screen-round');
-});
-document.getElementById('newRound').addEventListener('click', ()=>{
-  // Reset everything but keep names
-  revealedSet.clear();
-  impostorIndices.clear();
-  selectedWord = null;
-  $('tagPlayers').textContent = '—';
-  $('tagImps').textContent = '—';
-  $('tagCat').textContent = '—';
-  $('tagDiff').textContent = '—';
-  $('tagStarter').textContent = '—';
-  show('screen-setup');
-});
+  function showScreen(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+  }
 </script>
+
 </body>
 </html>
