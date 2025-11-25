@@ -4,239 +4,644 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Imposter — Party Word Game</title>
+<meta name="theme-color" content="#241a3a" />
 <style>
-  body { margin:0; font-family:sans-serif; background:#0a0b14; color:#eee; }
-  .app { max-width:900px; margin:0 auto; padding:20px; }
-  .sysbar { display:flex; justify-content:space-between; padding:8px 14px; background:#111328; color:#bbb; }
-  .screen { display:none; }
-  .screen.active { display:block; }
-  .card { background:#111328; border:1px solid #2a2c4a; border-radius:12px; padding:16px; margin-bottom:20px; }
-  .btn { padding:10px 16px; border:none; border-radius:8px; cursor:pointer; margin-top:10px; }
-  .btn.primary { background:#7c4dff; color:#fff; width:100%; }
-  .btn.danger { background:#ff3b5f; color:#fff; }
-  .btn.safe { background:#28c76f; color:#fff; }
-  .players { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
-  .player { background:#1a1a2a; border:1px solid #2a2c4a; border-radius:10px; padding:12px; text-align:center; cursor:pointer; }
-  .player.locked { opacity:.5; cursor:not-allowed; }
-  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); display:none; align-items:center; justify-content:center; }
-  .overlay.show { display:flex; }
-  .reveal { background:#222; padding:20px; border-radius:12px; text-align:center; max-width:400px; }
-  .imposter { font-weight:bold; color:#ff3b5f; }
+  :root{
+    --bg:#0a0b14; --panel:#111328; --text:#eaeaf3; --muted:#a6a7c2;
+    --primary:#7c4dff; --primary-2:#9b6dff; --accent:#00d4ff; --danger:#ff3b5f; --safe:#28c76f;
+    --border:#2a2c4a; --glow:#6f54ff; --neon:#08f7fe;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial;
+    color:var(--text);
+    background:
+      radial-gradient(1200px 800px at 10% -10%, rgba(124,77,255,.18), transparent 60%),
+      radial-gradient(800px 600px at 90% 120%, rgba(8,247,254,.12), transparent 60%),
+      #0a0b14;
+  }
+  /* Top system bar like your screenshots */
+  .sysbar{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 14px; color:#cfd0e9; font-size:.9rem; border-bottom:1px solid var(--border);
+    background:linear-gradient(90deg, rgba(124,77,255,.10), rgba(8,247,254,.08));
+    position:sticky; top:0; z-index:20; backdrop-filter:blur(6px);
+  }
+  .battery{display:flex; align-items:center; gap:6px}
+  .battery .cell{width:28px; height:14px; border:2px solid #cfd0e9; border-radius:3px; position:relative}
+  .battery .cell::after{content:""; position:absolute; right:-6px; top:3px; width:4px; height:8px; background:#cfd0e9; border-radius:1px}
+  .battery .fill{height:100%; background:#2bdc85; width:22%} /* updated via JS */
+
+  .app{max-width:920px; margin:0 auto; padding:16px}
+  .screen{display:none; animation:fade .22s ease}
+  .screen.active{display:block}
+  @keyframes fade{from{opacity:.01; transform:translateY(6px)} to{opacity:1; transform:none}}
+
+  .card{
+    background:
+      linear-gradient(180deg, rgba(25,25,44,.95), rgba(17,18,38,.95));
+    border:1px solid var(--border); border-radius:22px; padding:18px;
+    box-shadow:0 20px 50px rgba(0,0,0,.45);
+  }
+  .card h2{margin:0 0 10px; font-size:1.15rem}
+  .sub{color:var(--muted); font-size:.92rem}
+  .grid{display:grid; gap:12px}
+  @media(min-width:900px){.grid.cols-2{grid-template-columns:1fr 1fr}}
+
+  label{display:block; color:var(--muted); font-size:.92rem; margin-bottom:6px}
+  textarea,select,input[type=text],input[type=number]{
+    width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--border); background:#0f1130; color:var(--text); outline:none;
+  }
+  textarea{min-height:120px; resize:vertical}
+  .row{display:flex; gap:12px}
+  .row>*{flex:1}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:.6rem; padding:12px 16px; border-radius:14px;
+    border:1px solid var(--border); background:#0f1130; color:var(--text); cursor:pointer;
+    transition:transform .04s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .btn:hover{background:#131642}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{
+    background:linear-gradient(135deg, var(--primary), var(--primary-2)); border:none; color:white;
+    box-shadow:0 10px 26px rgba(124,77,255,.35);
+  }
+  .btn.ghost{background:transparent; border:1px dashed var(--border)}
+  .btn.danger{background:linear-gradient(135deg, #ff3b5f, #ff6b8a); border:none}
+  .btn.safe{background:linear-gradient(135deg, #22c55e, #2bdc85); border:none}
+
+  .tags{display:flex; gap:8px; flex-wrap:wrap}
+  .tag{
+    padding:8px 10px; border-radius:999px; font-size:.88rem;
+    background:#121538; border:1px solid var(--border); color:#cbd1f7;
+  }
+  .divider{height:1px; background:var(--border); margin:14px 0}
+
+  /* Players grid with neon circular avatars */
+  .players{
+    display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;
+  }
+  @media(min-width:640px){ .players{ grid-template-columns:1fr 1fr 1fr; } }
+  .player{
+    background:radial-gradient(400px 300px at 50% -40%, rgba(124,77,255,.18), transparent 70%), #101232;
+    border:1px solid var(--border); border-radius:18px; padding:14px; text-align:center; cursor:pointer; position:relative;
+    transition:transform .06s ease, box-shadow .2s ease, border-color .2s ease;
+  }
+  .player:hover{ transform:translateY(-2px); box-shadow:0 12px 30px rgba(124,77,255,.25); border-color:#3a3f68; }
+  .avatar{
+    width:68px; height:68px; border-radius:999px; margin:8px auto 10px;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.6rem; letter-spacing:.3px;
+    color:white;
+    background:
+      radial-gradient(60px 60px at 30% 30%, rgba(8,247,254,.45), transparent 60%),
+      linear-gradient(135deg, #7c4dff, #00d4ff);
+    box-shadow:
+      0 0 0 3px rgba(8,247,254,.25),
+      0 10px 26px rgba(0,0,0,.45);
+  }
+  .pname{font-weight:700; text-transform:lowercase; color:#eaeaf7; letter-spacing:.2px}
+
+  /* Full-screen reveal overlay */
+  .overlay{position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+           background:radial-gradient(900px 520px at 50% -10%, rgba(124,77,255,.28), rgba(0,0,0,.8)); z-index:50}
+  .overlay.show{display:flex}
+  .reveal{
+    width:min(560px,92vw);
+    background:
+      linear-gradient(180deg,#171842,#101233);
+    border:1px solid var(--border); border-radius:22px; padding:20px;
+    box-shadow:0 24px 60px rgba(0,0,0,.55);
+  }
+  .reveal h3{margin:0 0 6px}
+  .rsub{color:var(--muted); margin:0 0 10px}
+  .box{
+    background:linear-gradient(180deg,#121538,#0f1233);
+    border:1px dashed var(--border); border-radius:16px; padding:14px; text-align:center; margin-top:8px;
+  }
+  .tap{
+    height:120px; display:flex; align-items:center; justify-content:center; font-size:1.05rem; color:#b8baf0;
+  }
+  .word{
+    font-size:1.35rem; font-weight:800; letter-spacing:.3px;
+    background:linear-gradient(135deg, #c6c7ff, #eaeaf7); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .imposter{
+    display:inline-block; padding:14px 18px; border-radius:16px; font-weight:800; letter-spacing:.4px; color:white;
+    background:linear-gradient(135deg, #ff3b5f, #ff8fa3);
+    box-shadow:0 0 18px rgba(255,59,95,.45), inset 0 0 18px rgba(255,255,255,.12);
+  }
+  .actions{display:flex; justify-content:flex-end; gap:8px; margin-top:12px}
+
+  /* Mode cards */
+  .mode-wrap{display:grid; gap:10px; grid-template-columns:1fr 1fr}
+  .mode{padding:12px; border-radius:14px; border:1px solid var(--border); background:#121538}
+  .mode h3{margin:0 0 6px; font-size:1rem}
 </style>
 </head>
 <body>
-<div class="sysbar">
-  <div id="clock">--</div>
-  <div id="battery">22%</div>
-</div>
-
-<div class="app">
-
-  <!-- Setup -->
-  <section id="setup" class="screen active">
-    <div class="card">
-      <h2>Game Setup</h2>
-      <label>Number of impostors <input id="numImps" type="number" min="1" value="1"></label>
-      <label>Difficulty
-        <select id="difficulty">
-          <option value="easy" selected>Easy</option>
-          <option value="medium">Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-      </label>
-      <label>Category
-        <select id="category">
-          <option value="any">Any</option>
-          <option value="movies">Movies</option>
-          <option value="food">Food</option>
-          <option value="sports">Sports</option>
-          <option value="music">Music</option>
-          <option value="animals">Animals</option>
-          <option value="household">Household</option>
-          <option value="geography">Geography</option>
-          <option value="technology">Technology</option>
-        </select>
-      </label>
-      <textarea id="names" placeholder="Mrs Savage
-Mrs Belshaw
-Mr Higgins
-Mr Hamilton"></textarea>
-      <button id="startBtn" class="btn primary">Start Game</button>
-      <div id="setupStatus"></div>
+  <div class="sysbar">
+    <div id="clock">—</div>
+    <div class="battery">
+      <span id="battText">22%</span>
+      <div class="cell"><div id="battFill" class="fill"></div></div>
     </div>
-  </section>
-
-  <!-- Players -->
-  <section id="playersScreen" class="screen">
-    <div class="card">
-      <h2>Players</h2>
-      <div id="playersGrid" class="players"></div>
-      <button id="toRound" class="btn safe">Go to round</button>
-      <button id="revealImpsBtn" class="btn danger" style="display:none">Reveal Impostor(s)</button>
-    </div>
-  </section>
-
-  <!-- Round -->
-  <section id="roundScreen" class="screen">
-    <div class="card">
-      <h2>Round in progress</h2>
-      <button id="newRound" class="btn primary">New round</button>
-    </div>
-  </section>
-
-</div>
-
-<!-- Reveal overlay -->
-<div id="overlay" class="overlay">
-  <div class="reveal">
-    <h3 id="revealTitle">The word for —</h3>
-    <p id="revealCat">Category: —</p>
-    <div id="wordOrRole">—</div>
-    <button id="gotIt" class="btn primary">Got it!</button>
   </div>
-</div>
 
-<!-- Impostor reveal overlay -->
-<div id="impOverlay" class="overlay">
-  <div class="reveal">
-    <h2>Impostor(s)</h2>
-    <div id="impNames"></div>
-    <button id="impClose" class="btn danger">Close</button>
+  <div class="app">
+    <!-- Setup screen (like your "Start Game" config) -->
+    <section id="screen-setup" class="screen active">
+      <div class="grid cols-2">
+        <div class="card">
+          <h2>Game setup</h2>
+          <div class="mode-wrap">
+            <div class="mode">
+              <h3>Word game</h3>
+              <p class="sub">Find who doesn’t know the secret word.</p>
+              <label><input type="radio" name="mode" value="word" checked /> Select</label>
+            </div>
+            <div class="mode">
+              <h3>Question game</h3>
+              <p class="sub">Find who got a different question.</p>
+              <label><input type="radio" name="mode" value="question" /> Select</label>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="row">
+            <div>
+              <label for="numPlayers">Number of players</label>
+              <input id="numPlayers" type="number" min="3" value="4" />
+            </div>
+            <div>
+              <label for="numImps">Number of impostors</label>
+              <input id="numImps" type="number" min="1" value="1" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:8px">
+            <div>
+              <label for="category">Category</label>
+              <select id="category">
+                <option value="any">Any</option>
+                <option value="food">Food</option>
+                <option value="sports">Sports</option>
+                <option value="geography">Geography</option>
+                <option value="technology">Technology</option>
+                <option value="movies">Movies</option>
+                <option value="music">Music</option>
+                <option value="animals">Animals</option>
+                <option value="household">Household</option>
+              </select>
+            </div>
+            <div>
+              <label for="difficulty">Difficulty</label>
+              <select id="difficulty">
+                <option value="easy" selected>Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:8px">
+            <div>
+              <label><input id="showCatImp" type="checkbox" checked /> Show category to impostor</label>
+              <div class="sub">Impostor sees the topic (like your screenshot).</div>
+            </div>
+            <div>
+              <label><input id="showHintImp" type="checkbox" /> Show hint to impostor</label>
+              <div class="sub">Optional subtle hint word.</div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <label for="names">Players (one per line)</label>
+          <textarea id="names" placeholder="sahal
+dad
+mum
+momo"></textarea>
+
+          <div class="actions">
+            <button id="startBtn" class="btn primary">Start game</button>
+          </div>
+          <div id="setupStatus" class="tags" style="margin-top:10px"></div>
+        </div>
+
+        <div class="card">
+          <h2>Round summary</h2>
+          <div class="tags">
+            <span class="tag"><span class="sub">Players:</span> <span id="tagPlayers">—</span></span>
+            <span class="tag"><span class="sub">Impostors:</span> <span id="tagImps">—</span></span>
+            <span class="tag"><span class="sub">Category:</span> <span id="tagCat">—</span></span>
+            <span class="tag"><span class="sub">Difficulty:</span> <span id="tagDiff">—</span></span>
+            <span class="tag"><span class="sub">Starter:</span> <span id="tagStarter">—</span></span>
+          </div>
+          <div class="divider"></div>
+          <p class="sub">After starting, tap your name to reveal your word, then pass the device to the next player.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Players screen (grid with neon avatars like your first screenshot) -->
+    <section id="screen-players" class="screen">
+      <div class="card">
+        <h2>Players</h2>
+        <p class="sub">Tap your name to reveal your word, then pass the device to the next player.</p>
+        <div id="playersGrid" class="players"></div>
+        <div class="actions">
+          <button id="toSetup" class="btn ghost">Back</button>
+          <button id="toRound" class="btn safe">Go to round</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Round screen (simple instructions, matching your flow) -->
+    <section id="screen-round" class="screen">
+      <div class="card">
+        <h2>Round in progress</h2>
+        <div class="tags" style="margin-bottom:10px">
+          <span class="tag">Starter: <strong id="roundStarter">—</strong></span>
+          <span class="tag">Impostors: <strong id="roundImps">—</strong></span>
+          <span class="tag">Category: <strong id="roundCat">—</strong></span>
+          <span class="tag">Difficulty: <strong id="roundDiff">—</strong></span>
+        </div>
+        <div class="card" style="margin-top:10px">
+          <h2>One sentence clue each</h2>
+          <p class="sub">Keep it specific enough to help, vague enough not to give it away. After one loop, discuss and vote.</p>
+          <div class="actions">
+            <button id="newRound" class="btn ghost">New round</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
-</div>
+
+  <!-- Reveal overlay -->
+  <div id="overlay" class="overlay" aria-hidden="true">
+    <div class="reveal" role="dialog" aria-modal="true">
+      <h3 id="revealTitle">The word for —</h3>
+      <p class="rsub" id="revealCat">Category: —</p>
+      <div id="tapBox" class="box">
+        <div id="tapText" class="tap">Tap the box to reveal</div>
+        <div id="wordBox" class="word" style="display:none">—</div>
+        <div id="impBox" style="display:none"><span class="imposter">Imposter</span></div>
+        <div id="hintBox" class="sub" style="display:none; margin-top:8px">Hint: <span id="hintText">—</span></div>
+      </div>
+      <div class="actions">
+        <button id="gotIt" class="btn primary">Got it!</button>
+        <button id="closeReveal" class="btn danger">Close</button>
+      </div>
+    </div>
+  </div>
 
 <script>
-// Build WORDS array programmatically (~100 words)
-const WORDS = [];
-function addWords(topic, category, difficulty, words) {
-  words.forEach(w => WORDS.push({word:w, topic, category, difficulty}));
+/* ==== Clock & battery (visual only, like your status bar) ==== */
+function updateClock(){
+  const now = new Date();
+  const opts = { hour: 'numeric', minute: '2-digit' };
+  const time = new Intl.DateTimeFormat(undefined, opts).format(now).toLowerCase();
+  const weekday = now.toLocaleDateString(undefined, { weekday:'short' });
+  const dayMonth = now.toLocaleDateString(undefined, { day:'numeric', month:'short' });
+  document.getElementById('clock').textContent = `${time} ${weekday} ${dayMonth}`;
 }
+updateClock(); setInterval(updateClock, 30_000);
+function setBattery(pct){
+  document.getElementById('battText').textContent = `${pct}%`;
+  document.getElementById('battFill').style.width = `${pct}%`;
+}
+setBattery(22);
 
-// 8 categories × 15 words = 120 words
-addWords("Food","food","easy",["Pizza","Burger","Sandwich","Pasta","Cake"]);
-addWords("Food","food","medium",["Sushi","Curry","Falafel","Quiche","Dumplings"]);
-addWords("Food","food","hard",["Brioche","Ratatouille","Gazpacho","Kimchi","Tiramisu"]);
+/* ==== Expanded word bank: 120 words ==== */
+const WORDS = [
+  // Food
+  {word:"Pizza",topic:"Food",category:"food",difficulty:"easy",hints:["Cheese","Slice"]},
+  {word:"Burger",topic:"Food",category:"food",difficulty:"easy",hints:["Bun","Patty"]},
+  {word:"Sandwich",topic:"Food",category:"food",difficulty:"easy",hints:["Bread","Fillings"]},
+  {word:"Pasta",topic:"Food",category:"food",difficulty:"easy",hints:["Noodles","Sauce"]},
+  {word:"Cake",topic:"Food",category:"food",difficulty:"easy",hints:["Icing","Slice"]},
+  {word:"Sushi",topic:"Food",category:"food",difficulty:"medium",hints:["Rice","Roll"]},
+  {word:"Curry",topic:"Food",category:"food",difficulty:"medium",hints:["Spice","Sauce"]},
+  {word:"Falafel",topic:"Food",category:"food",difficulty:"medium",hints:["Chickpea","Wrap"]},
+  {word:"Quiche",topic:"Food",category:"food",difficulty:"medium",hints:["Egg","Pastry"]},
+  {word:"Dumplings",topic:"Food",category:"food",difficulty:"medium",hints:["Filling","Steamed"]},
+  {word:"Brioche",topic:"Food",category:"food",difficulty:"hard",hints:["Butter","Bakery"]},
+  {word:"Ratatouille",topic:"Food",category:"food",difficulty:"hard",hints:["Vegetable","French"]},
+  {word:"Gazpacho",topic:"Food",category:"food",difficulty:"hard",hints:["Cold","Soup"]},
+  {word:"Kimchi",topic:"Food",category:"food",difficulty:"hard",hints:["Fermented","Spicy"]},
+  {word:"Tiramisu",topic:"Food",category:"food",difficulty:"hard",hints:["Coffee","Layers"]},
+  // Sports
+  {word:"Football",topic:"Sports",category:"sports",difficulty:"easy",hints:["Goal","Pitch"]},
+  {word:"Basketball",topic:"Sports",category:"sports",difficulty:"easy",hints:["Hoop","Dribble"]},
+  {word:"Tennis",topic:"Sports",category:"sports",difficulty:"easy",hints:["Racket","Court"]},
+  {word:"Rugby",topic:"Sports",category:"sports",difficulty:"easy",hints:["Try","Scrum"]},
+  {word:"Swimming",topic:"Sports",category:"sports",difficulty:"easy",hints:["Pool","Stroke"]},
+  {word:"Cricket",topic:"Sports",category:"sports",difficulty:"medium",hints:["Wicket","Bat"]},
+  {word:"Badminton",topic:"Sports",category:"sports",difficulty:"medium",hints:["Shuttle","Net"]},
+  {word:"Hockey",topic:"Sports",category:"sports",difficulty:"medium",hints:["Stick","Ice/Field"]},
+  {word:"Volleyball",topic:"Sports",category:"sports",difficulty:"medium",hints:["Spike","Net"]},
+  {word:"Boxing",topic:"Sports",category:"sports",difficulty:"medium",hints:["Ring","Gloves"]},
+  {word:"Biathlon",topic:"Sports",category:"sports",difficulty:"hard",hints:["Ski","Rifle"]},
+  {word:"Dressage",topic:"Sports",category:"sports",difficulty:"hard",hints:["Horse","Routine"]},
+  {word:"Curling",topic:"Sports",category:"sports",difficulty:"hard",hints:["Stone","Sweep"]},
+  {word:"Pentathlon",topic:"Sports",category:"sports",difficulty:"hard",hints:["Five","Events"]},
+  {word:"Archery",topic:"Sports",category:"sports",difficulty:"hard",hints:["Bow","Target"]},
+  // Geography
+  {word:"Desert",topic:"Geography",category:"geography",difficulty:"easy",hints:["Sand","Dunes"]},
+  {word:"Mountain",topic:"Geography",category:"geography",difficulty:"easy",hints:["Peak","Climb"]},
+  {word:"River",topic:"Geography",category:"geography",difficulty:"easy",hints:["Flow","Bank"]},
+  {word:"Island",topic:"Geography",category:"geography",difficulty:"easy",hints:["Sea","Coast"]},
+  {word:"Forest",topic:"Geography",category:"geography",difficulty:"easy",hints:["Trees","Wild"]},
+  {word:"Volcano",topic:"Geography",category:"geography",difficulty:"medium",hints:["Lava","Erupt"]},
+  {word:"Glacier",topic:"Geography",category:"geography",difficulty:"medium",hints:["Ice","Slow"]},
+  {word:"Canyon",topic:"Geography",category:"geography",difficulty:"medium",hints:["Cliffs","Deep"]},
+  {word:"Plateau",topic:"Geography",category:"geography",difficulty:"medium",hints:["Flat","High"]},
+  {word:"Oasis",topic:"Geography",category:"geography",difficulty:"medium",hints:["Water","Desert"]},
+  {word:"Archipelago",topic:"Geography",category:"geography",difficulty:"hard",hints:["Islands","Group"]},
+  {word:"Isthmus",topic:"Geography",category:"geography",difficulty:"hard",hints:["Narrow","Land"]},
+  {word:"Delta",topic:"Geography",category:"geography",difficulty:"hard",hints:["River","Mouth"]},
+  {word:"Fjord",topic:"Geography",category:"geography",difficulty:"hard",hints:["Sea","Cliffs"]},
+  {word:"Atoll",topic:"Geography",category:"geography",difficulty:"hard",hints:["Coral","Ring"]},
+  // Technology
+  {word:"Keyboard",topic:"Technology",category:"technology",difficulty:"easy",hints:["Keys","Typing"]},
+  {word:"Mouse",topic:"Technology",category:"technology",difficulty:"easy",hints:["Pointer","Click"]},
+  {word:"Screen",topic:"Technology",category:"technology",difficulty:"easy",hints:["Display","Pixels"]},
+  {word:"Printer",topic:"Technology",category:"technology",difficulty:"easy",hints:["Ink","Paper"]},
+  {word:"Wi-Fi",topic:"Technology",category:"technology",difficulty:"easy",hints:["Wireless","Network"]},
+  {word:"Router",topic:"Technology",category:"technology",difficulty:"medium",hints:["Packets","DHCP"]},
+  {word:"Database",topic:"Technology",category:"technology",difficulty:"medium",hints:["Tables","Query"]},
+  {word:"Browser",topic:"Technology",category:"technology",difficulty:"medium",hints:["Tabs","Web"]},
+  {word:"Server",topic:"Technology",category:"technology",difficulty:"medium",hints:["Host","Requests"]},
+  {word:"Firewall",topic:"Technology",category:"technology",difficulty:"medium",hints:["Filter","Ports"]},
+  {word:"Algorithm",topic:"Technology",category:"technology",difficulty:"hard",hints:["Steps","Logic"]},
+  {word:"Blockchain",topic:"Technology",category:"technology",difficulty:"hard",hints:["Ledger","Blocks"]},
+  {word:"Compiler",topic:"Technology",category:"technology",difficulty:"hard",hints:["Code","Build"]},
+  {word:"Encryption",topic:"Technology",category:"technology",difficulty:"hard",hints:["Cipher","Keys"]},
+  {word:"API",topic:"Technology",category:"technology",difficulty:"hard",hints:["Interface","Calls"]},
+  // Movies
+  {word:"Superhero",topic:"Movies",category:"movies",difficulty:"easy",hints:["Cape","Power"]},
+  {word:"Villain",topic:"Movies",category:"movies",difficulty:"easy",hints:["Evil","Antagonist"]},
+  {word:"Actor",topic:"Movies",category:"movies",difficulty:"easy",hints:["Role","Cast"]},
+  {word:"Scene",topic:"Movies",category:"movies",difficulty:"easy",hints:["Shot","Set"]},
+  {word:"Popcorn",topic:"Movies",category:"movies",difficulty:"easy",hints:["Snack","Bucket"]},
+  {word:"Sequel",topic:"Movies",category:"movies",difficulty:"medium",hints:["Next","Part"]},
+  {word:"Director",topic:"Movies",category:"movies",difficulty:"medium",hints:["Set","Vision"]},
+  {word:"Script",topic:"Movies",category:"movies",difficulty:"medium",hints:["Dialogue","Pages"]},
+  {word:"Trailer",topic:"Movies",category:"movies",difficulty:"medium",hints:["Preview","Tease"]},
+  {word:"Soundtrack",topic:"Movies",category:"movies",difficulty:"medium",hints:["Music","Score"]},
+  {word:"Montage",topic:"Movies",category:"movies",difficulty:"hard",hints:["Sequence","Edit"]},
+  {word:"Cinematography",topic:"Movies",category:"movies",difficulty:"hard",hints:["Camera","Lighting"]},
+  {word:"Cameo",topic:"Movies",category:"movies",difficulty:"hard",hints:["Brief","Appearance"]},
+  {word:"Screenplay",topic:"Movies",category:"movies",difficulty:"hard",hints:["Script","Structure"]},
+  {word:"Franchise",topic:"Movies",category:"movies",difficulty:"hard",hints:["Series","Brand"]},
+  // Music
+  {word:"Guitar",topic:"Music",category:"music",difficulty:"easy",hints:["Strings","Pick"]},
+  {word:"Piano",topic:"Music",category:"music",difficulty:"easy",hints:["Keys","Pedal"]},
+  {word:"Drum",topic:"Music",category:"music",difficulty:"easy",hints:["Beat","Stick"]},
+  {word:"Singer",topic:"Music",category:"music",difficulty:"easy",hints:["Voice","Vocal"]},
+  {word:"Song",topic:"Music",category:"music",difficulty:"easy",hints:["Lyrics","Tune"]},
+  {word:"Tempo",topic:"Music",category:"music",difficulty:"medium",hints:["Speed","BPM"]},
+  {word:"Melody",topic:"Music",category:"music",difficulty:"medium",hints:["Tune","Lead"]},
+  {word:"Harmony",topic:"Music",category:"music",difficulty:"medium",hints:["Chord","Blend"]},
+  {word:"Choir",topic:"Music",category:"music",difficulty:"medium",hints:["Group","Sing"]},
+  {word:"Festival",topic:"Music",category:"music",difficulty:"medium",hints:["Stage","Crowd"]},
+  {word:"Polyrhythm",topic:"Music",category:"music",difficulty:"hard",hints:["Overlap","Timing"]},
+  {word:"Crescendo",topic:"Music",category:"music",difficulty:"hard",hints:["Grow","Louder"]},
+  {word:"Fugue",topic:"Music",category:"music",difficulty:"hard",hints:["Counterpoint","Baroque"]},
+  {word:"Overture",topic:"Music",category:"music",difficulty:"hard",hints:["Opening","Orchestra"]},
+  {word:"Syncopation",topic:"Music",category:"music",difficulty:"hard",hints:["Off‑beat","Accent"]},
+  // Animals
+  {word:"Dog",topic:"Animals",category:"animals",difficulty:"easy",hints:["Pet","Bark"]},
+  {word:"Cat",topic:"Animals",category:"animals",difficulty:"easy",hints:["Meow","Whiskers"]},
+  {word:"Cow",topic:"Animals",category:"animals",difficulty:"easy",hints:["Milk","Farm"]},
+  {word:"Horse",topic:"Animals",category:"animals",difficulty:"easy",hints:["Mane","Ride"]},
+  {word:"Sheep",topic:"Animals",category:"animals",difficulty:"easy",hints:["Wool","Flock"]},
+  {word:"Penguin",topic:"Animals",category:"animals",difficulty:"medium",hints:["Ice","Waddle"]},
+  {word:"Kangaroo",topic:"Animals",category:"animals",difficulty:"medium",hints:["Pouch","Jump"]},
+  {word:"Tiger",topic:"Animals",category:"animals",difficulty:"medium",hints:["Stripes","Big cat"]},
+  {word:"Dolphin",topic:"Animals",category:"animals",difficulty:"medium",hints:["Smart","Ocean"]},
+  {word:"Eagle",topic:"Animals",category:"animals",difficulty:"medium",hints:["Wings","Soar"]},
+  {word:"Axolotl",topic:"Animals",category:"animals",difficulty:"hard",hints:["Salamander","Smile"]},
+  {word:"Platypus",topic:"Animals",category:"animals",difficulty:"hard",hints:["Beak","Weird"]},
+  {word:"Narwhal",topic:"Animals",category:"animals",difficulty:"hard",hints:["Tusk","Arctic"]},
+  {word:"Chameleon",topic:"Animals",category:"animals",difficulty:"hard",hints:["Color","Change"]},
+  {word:"Armadillo",topic:"Animals",category:"animals",difficulty:"hard",hints:["Armor","Roll"]},
+  // Household
+  {word:"Sofa",topic:"Household",category:"household",difficulty:"easy",hints:["Cushion","Seat"]},
+  {word:"Chair",topic:"Household",category:"household",difficulty:"easy",hints:["Sit","Legs"]},
+  {word:"Bed",topic:"Household",category:"household",difficulty:"easy",hints:["Sleep","Pillow"]},
+  {word:"Lamp",topic:"Household",category:"household",difficulty:"easy",hints:["Light","Shade"]},
+  {word:"Table",topic:"Household",category:"household",difficulty:"easy",hints:["Eat","Surface"]},
+  {word:"Microwave",topic:"Household",category:"household",difficulty:"medium",hints:["Heat","Timer"]},
+  {word:"Vacuum",topic:"Household",category:"household",difficulty:"medium",hints:["Clean","Dust"]},
+  {word:"Fridge",topic:"Household",category:"household",difficulty:"medium",hints:["Cold","Food"]},
+  {word:"Curtain",topic:"Household",category:"household",difficulty:"medium",hints:["Window","Drape"]},
+  {word:"Mirror",topic:"Household",category:"household",difficulty:"medium",hints:["Reflect","Glass"]},
+  {word:"Decanter",topic:"Household",category:"household",difficulty:"hard",hints:["Pour","Wine"]},
+  {word:"Chandelier",topic:"Household",category:"household",difficulty:"hard",hints:["Ceiling","Crystals"]},
+  {word:"Ottoman",topic:"Household",category:"household",difficulty:"hard",hints:["Footrest","Seat"]},
+  {word:"Wardrobe",topic:"Household",category:"household",difficulty:"hard",hints:["Clothes","Doors"]},
+  {word:"Tapestry",topic:"Household",category:"household",difficulty:"hard",hints:["Wall","Woven"]},
+];
 
-addWords("Sports","sports","easy",["Football","Basketball","Tennis","Rugby","Swimming"]);
-addWords("Sports","sports","medium",["Cricket","Badminton","Hockey","Volleyball","Boxing"]);
-addWords("Sports","sports","hard",["Biathlon","Dressage","Curling","Pentathlon","Archery"]);
+/* ==== Question prompts for "Question game" mode ==== */
+const QUESTIONS = {
+  same: [
+    {prompt:"Describe your morning routine in one sentence.", difficulty:"easy"},
+    {prompt:"Name a city you'd like to visit and why.", difficulty:"medium"},
+    {prompt:"Explain a hobby you enjoy in one sentence.", difficulty:"easy"},
+    {prompt:"What was your last movie and what you liked?", difficulty:"medium"},
+    {prompt:"Share one thing you learned recently.", difficulty:"hard"},
+  ],
+  alt: [
+    {prompt:"Describe your bedtime routine in one sentence.", difficulty:"easy"},
+    {prompt:"Name a city you would avoid and why.", difficulty:"medium"},
+    {prompt:"Explain a skill you want to learn.", difficulty:"easy"},
+    {prompt:"What was a movie you disliked and why?", difficulty:"medium"},
+    {prompt:"Share a belief you changed your mind about.", difficulty:"hard"},
+  ]
+};
 
-addWords("Movies","movies","easy",["Titanic","Superhero","Villain","Actor","Scene"]);
-addWords("Movies","movies","medium",["Sequel","Director","Script","Trailer","Soundtrack"]);
-addWords("Movies","movies","hard",["Montage","Cinematography","Cameo","Screenplay","Franchise"]);
-
-addWords("Music","music","easy",["Guitar","Piano","Drum","Singer","Song"]);
-addWords("Music","music","medium",["Tempo","Melody","Harmony","Choir","Festival"]);
-addWords("Music","music","hard",["Polyrhythm","Crescendo","Fugue","Overture","Syncopation"]);
-
-addWords("Animals","animals","easy",["Dog","Cat","Cow","Horse","Sheep"]);
-addWords("Animals","animals","medium",["Penguin","Kangaroo","Tiger","Dolphin","Eagle"]);
-addWords("Animals","animals","hard",["Axolotl","Platypus","Narwhal","Chameleon","Armadillo"]);
-
-addWords("Household","household","easy",["Sofa","Chair","Bed","Lamp","Table"]);
-addWords("Household","household","medium",["Microwave","Vacuum","Fridge","Curtain","Mirror"]);
-addWords("Household","household","hard",["Decanter","Chandelier","Ottoman","Wardrobe","Tapestry"]);
-
-addWords("Geography","geography","easy",["Desert","Mountain","River","Island","Forest"]);
-addWords("Geography","geography","medium",["Volcano","Glacier","Canyon","Plateau","Oasis"]);
-addWords("Geography","geography","hard",["Archipelago","Isthmus","Delta","Fjord","Atoll"]);
-
-addWords("Technology","technology","easy",["Keyboard","Mouse","Screen","Printer","Wi-Fi"]);
-addWords("Technology","technology","medium",["Router","Database","Browser","Server","Firewall"]);
-addWords("Technology","technology","hard",["Algorithm","Blockchain","Compiler","Encryption","API"]);
-
-// Game state
+/* ==== State ==== */
 let players = [];
 let impostorIndices = new Set();
-let revealed = new Set();
 let selectedWord = null;
+let selectedQuestion = null;
+let altQuestion = null;
+let starterIndex = null;
+let roundMode = 'word'; // 'word' or 'question'
 
+/* ==== Helpers ==== */
 const $ = id => document.getElementById(id);
 const randInt = n => Math.floor(Math.random()*n);
+const sample = arr => arr[randInt(arr.length)];
+const shuffle = arr => { for(let i=arr.length-1;i>0;i--){const j=randInt(i+1); [arr[i],arr[j]]=[arr[j],arr[i]] } return arr };
+const clamp = (x,min,max) => Math.max(min,Math.min(max,x));
 
+function parsePlayers(text){
+  return text.split('\n').map(s=>s.trim()).filter(Boolean);
+}
+function validate(n,k){
+  const errs=[];
+  if(n<3) errs.push('Add at least 3 players.');
+  if(!Number.isFinite(k)||k<1) errs.push('Impostors must be ≥ 1.');
+  if(k>=n) errs.push('Impostors must be fewer than players.');
+  return errs;
+}
+function assignImpostors(n,k){
+  impostorIndices = new Set();
+  const ix = shuffle([...Array(n).keys()]);
+  for(let i=0;i<k;i++) impostorIndices.add(ix[i]);
+}
+function pickWord(category,difficulty){
+  const pool = WORDS.filter(w => (category==='any'||w.category===category) && (difficulty? w.difficulty===difficulty : true));
+  return pool.length ? sample(pool) : null;
+}
+function pickQuestions(difficulty){
+  const same = QUESTIONS.same.filter(q=>q.difficulty===difficulty);
+  const alt = QUESTIONS.alt.filter(q=>q.difficulty===difficulty);
+  selectedQuestion = sample(same.length?same:QUESTIONS.same);
+  altQuestion = sample(alt.length?alt:QUESTIONS.alt);
+}
+
+/* ==== Screens ==== */
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   $(id).classList.add('active');
 }
 
+/* ==== Build players grid ==== */
 function buildPlayersGrid(){
-  const grid = $('playersGrid'); grid.innerHTML='';
-  players.forEach((p,i)=>{
-    const div=document.createElement('div');
-    div.className='player';
-    div.textContent=p;
-    if(revealed.has(i)){
-      div.classList.add('locked');
-    } else {
-      div.onclick=()=>openReveal(i);
-    }
+  const grid = $('playersGrid');
+  grid.innerHTML = '';
+  players.forEach((name, idx)=>{
+    const div = document.createElement('div');
+    div.className = 'player';
+    div.setAttribute('role','button');
+    div.setAttribute('aria-label',`Reveal for ${name}`);
+    div.innerHTML = `
+      <div class="avatar">${(name[0]||'?').toUpperCase()}</div>
+      <div class="pname">${name}</div>
+    `;
+    div.addEventListener('click', ()=> openReveal(idx));
     grid.appendChild(div);
   });
 }
 
-function openReveal(i){
-  const isImp = impostorIndices.has(i);
-  $('revealTitle').textContent = `The word for ${players[i]}`;
-    $('wordOrRole').textContent = isImp ? 'Imposter' : selectedWord.word;
-  $('wordOrRole').className = isImp ? 'imposter' : 'word';
+/* ==== Reveal overlay logic (matching your flows) ==== */
+let currentRevealIdx = null;
+function openReveal(idx){
+  currentRevealIdx = idx;
+  const isImp = impostorIndices.has(idx);
+  const name = players[idx];
+  const showCat = $('showCatImp').checked;
+  const showHint = $('showHintImp').checked;
+
+  $('revealTitle').textContent = roundMode==='word' ? `The word for ${name}` : `The question for ${name}`;
+  $('revealCat').textContent = roundMode==='word' && showCat ? `Category: ${selectedWord.topic}` : (roundMode==='word' ? `Category: —` : `Mode: Question`);
+
+  // Reset boxes
+  $('tapText').style.display = roundMode==='word' ? 'block' : 'none';
+  $('wordBox').style.display = 'none';
+  $('impBox').style.display = 'none';
+  $('hintBox').style.display = 'none';
+
+  if(roundMode==='word'){
+    if(isImp){
+      // Impostor sees "Imposter", optional category and hint
+      $('impBox').style.display = 'block';
+      if(showCat){ $('revealCat').textContent = `Category: ${selectedWord.topic}`; }
+      if(showHint && selectedWord.hints && selectedWord.hints.length){
+        $('hintBox').style.display = 'block';
+        $('hintText').textContent = sample(selectedWord.hints);
+      }
+      // No tap needed for impostor
+      $('tapText').style.display = 'none';
+    }else{
+      // Civilian: tap to reveal word
+      $('tapText').style.display = 'block';
+      $('tapBox').onclick = ()=>{
+        $('tapText').style.display = 'none';
+        $('wordBox').style.display = 'block';
+        $('wordBox').textContent = selectedWord.word;
+        $('tapBox').onclick = null;
+      };
+    }
+  }else{
+    // Question mode: impostor gets alt question, others get same question
+    const q = isImp ? altQuestion : selectedQuestion;
+    $('wordBox').style.display = 'block';
+    $('wordBox').textContent = q.prompt;
+    $('tapText').style.display = 'none';
+  }
+
   $('overlay').classList.add('show');
-  $('gotIt').onclick = () => {
-    $('overlay').classList.remove('show');
-    revealed.add(i);
-    buildPlayersGrid();
-    $('revealImpsBtn').style.display = (revealed.size === players.length) ? 'inline-block' : 'none';
-  };
 }
+$('gotIt').addEventListener('click', ()=> $('overlay').classList.remove('show'));
+$('closeReveal').addEventListener('click', ()=> $('overlay').classList.remove('show'));
 
-function pickWord(category, difficulty){
-  const pool1 = WORDS.filter(w => (category==='any' || w.category===category) && w.difficulty===difficulty);
-  const pool2 = WORDS.filter(w => (category==='any' || w.category===category));
-  if (pool1.length) return pool1[randInt(pool1.length)];
-  if (pool2.length) return pool2[randInt(pool2.length)];
-  return WORDS[randInt(WORDS.length)];
-}
-
-$('startBtn').onclick = () => {
-  players = $('names').value.split('\n').map(s=>s.trim()).filter(Boolean);
+/* ==== Event wiring ==== */
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  const modeEl = document.querySelector('input[name="mode"]:checked');
+  roundMode = modeEl ? modeEl.value : 'word';
+  players = parsePlayers($('names').value);
   const n = players.length;
-  const k = parseInt($('numImps').value, 10);
+  const k = parseInt($('numImps').value,10);
   const category = $('category').value;
   const difficulty = $('difficulty').value;
 
-  $('setupStatus').textContent = '';
-  if (n < 3) { $('setupStatus').textContent = 'Need at least 3 players.'; return; }
-  if (!Number.isFinite(k) || k < 1 || k >= n) { $('setupStatus').textContent = 'Invalid impostor count.'; return; }
+  const errs = validate(n,k);
+  $('setupStatus').innerHTML = '';
+  if(n !== parseInt($('numPlayers').value,10)){
+    $('setupStatus').innerHTML += '<span class="tag">Number of players updated to match list.</span>';
+  }
+  if(errs.length){
+    errs.forEach(e=>{
+      const el=document.createElement('span'); el.className='tag'; el.textContent=e; $('setupStatus').appendChild(el);
+    });
+    return;
+  }
 
-  // Completely random impostor assignment
-  impostorIndices = new Set();
-  while (impostorIndices.size < k) impostorIndices.add(randInt(n));
+  assignImpostors(n, clamp(k,1,n-1));
 
-  // Pick word
-  selectedWord = pickWord(category, difficulty);
+  if(roundMode==='word'){
+    selectedWord = pickWord(category,difficulty);
+    if(!selectedWord){
+      $('setupStatus').innerHTML = '<span class="tag">No words for that category/difficulty.</span>';
+      return;
+    }
+  }else{
+    pickQuestions(difficulty);
+  }
 
-  revealed.clear();
+  // Starter
+  starterIndex = randInt(n);
+
+  // Tags
+  $('tagPlayers').textContent = n;
+  $('tagImps').textContent = impostorIndices.size;
+  $('tagCat').textContent = roundMode==='word' ? (selectedWord.topic + (category!=='any' ? ` (${category})` : '')) : '—';
+  $('tagDiff').textContent = difficulty;
+  $('tagStarter').textContent = players[starterIndex];
+
+  // Build players screen
   buildPlayersGrid();
-  show('playersScreen');
-};
+  show('screen-players');
+});
 
-$('toRound').onclick = () => show('roundScreen');
-$('newRound').onclick = () => show('setup');
-
-$('revealImpsBtn').onclick = () => {
-  const names = [...impostorIndices].map(i => players[i]);
-  $('impNames').textContent = names.join(', ');
-  $('impOverlay').classList.add('show');
-};
-$('impClose').onclick = () => $('impOverlay').classList.remove('show');
-
-// Simple clock
-function updateClock(){
-  const d = new Date();
-  const opts = { hour:'numeric', minute:'2-digit' };
-  $('clock').textContent = d.toLocaleTimeString([], opts);
-}
-updateClock(); setInterval(updateClock, 30000);
+document.getElementById('toSetup').addEventListener('click', ()=> show('screen-setup'));
+document.getElementById('toRound').addEventListener('click', ()=>{
+  if(!players.length) return;
+  $('roundStarter').textContent = players[starterIndex];
+  $('roundImps').textContent = impostorIndices.size;
+  $('roundCat').textContent = roundMode==='word' ? selectedWord.topic : '—';
+  $('roundDiff').textContent = $('difficulty').value;
+  show('screen-round');
+});
+document.getElementById('newRound').addEventListener('click', ()=> show('screen-setup'));
 </script>
 </body>
 </html>
-
